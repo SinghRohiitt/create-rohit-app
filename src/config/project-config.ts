@@ -29,6 +29,7 @@ export interface ParsedProjectRequest {
   readonly mode: CliMode;
   readonly config: ProjectConfigDraft;
   readonly providedOptions: ProjectConfigOptions;
+  readonly dryRun: boolean;
 }
 
 export interface ProjectConfigOptions {

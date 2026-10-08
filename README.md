@@ -36,10 +36,22 @@ npx create-rohit-app my-app \
   --install-dependencies
 ```
 
-Use `--javascript`, `--database none`, `--auth none`, or `--no-install` for
-explicit alternatives. If prompts are still needed, run the CLI in a terminal
-with interactive input. Project generation is not implemented yet; after
-configuration, the CLI prints the resolved typed configuration.
+Use `--javascript`, `--database none`, `--auth none`, `--no-install`, or
+`--dry-run` for explicit alternatives. If prompts are still needed, run the CLI
+in a terminal with interactive input.
+
+The generator discovers templates from the packaged catalog and composes all
+templates whose `appliesTo` selectors match the resolved configuration.
+Templates use a `template.json` manifest to map source files to safe relative
+destination paths, optionally render `{{projectConfigKey}}` variables, and
+conditionally include files with `when` selectors. The current catalog
+generates shared project documentation, a `.gitignore`, and example environment
+files. Framework-specific application templates are not included yet.
+
+Existing non-empty destination directories are never overwritten. Use
+`--dry-run` to print planned file paths without writing any files. Dependency
+installation and Git initialization are configuration options but are not
+executed by this release.
 
 Use `--help` to list available options and `--version` to print the CLI version.
 Project names must be lowercase and contain only letters, numbers, dots,

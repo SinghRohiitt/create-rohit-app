@@ -1,6 +1,6 @@
 import { CommanderError } from "commander";
-import { displayProjectRequest } from "../commands/display-project-request.js";
 import { resolveProjectConfig } from "../config/resolve-project-config.js";
+import { generateProject } from "../generators/project-generator.js";
 import { configurationPrompts } from "../prompts/configuration-prompts.js";
 import { createCliProgram } from "./parse-cli-args.js";
 
@@ -27,7 +27,19 @@ export async function runCli(
         request.providedOptions,
         configurationPrompts,
       );
-      displayProjectRequest(config);
+      const result = await generateProject(config, {
+        dryRun: request.dryRun,
+      });
+
+      if (result.dryRun) {
+        console.log("Dry run: no files were written.");
+        console.log("Planned files:");
+      } else {
+        console.log(`\nCreated ${config.projectName} at ${result.projectPath}`);
+      }
+      for (const file of result.files) {
+        console.log(`  ${file}`);
+      }
     });
     program.exitOverride();
     await program.parseAsync([...args], { from: "user" });

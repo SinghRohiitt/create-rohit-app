@@ -62,6 +62,7 @@ describe("parseCliArgs", () => {
         database: "postgres",
         authentication: "jwt",
       },
+      dryRun: false,
     });
   });
 
@@ -93,6 +94,7 @@ describe("parseCliArgs", () => {
         initializeGit: true,
       },
       providedOptions: {},
+      dryRun: false,
     });
   });
 

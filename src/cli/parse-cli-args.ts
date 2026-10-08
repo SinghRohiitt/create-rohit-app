@@ -130,6 +130,7 @@ function createProgram(
     .option("--install-dependencies", "install dependencies")
     .option("--no-install", "skip dependency installation")
     .option("--no-git", "skip Git initialization")
+    .option("--dry-run", "show planned output without writing files")
     .action((projectName: string, commandOptions: Record<string, unknown>) => {
       const options: ProjectConfigOptions = {
         ...(isOneOf(commandOptions.frontend, frontends)
@@ -172,6 +173,7 @@ function createProgram(
         mode: hasExplicitOptions(args) ? "cli" : "interactive",
         config,
         providedOptions: options,
+        dryRun: hasFlag(args, "--dry-run"),
       });
     });
 
@@ -213,5 +215,6 @@ export function parseCliArgs(args: readonly string[]): ParsedProjectRequest {
   return {
     ...request,
     mode: hasExplicitOptions(args) ? "cli" : "interactive",
+    dryRun: hasFlag(args, "--dry-run"),
   };
 }

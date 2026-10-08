@@ -8,13 +8,14 @@
   },
   "files": [
     "dist",
+    "templates",
     "README.md"
   ],
   "engines": {
     "node": ">=20.19.0"
   },
   "scripts": {
-    "build": "tsup src/index.ts --format esm --platform node --target node20 --out-dir dist --clean",
+    "build": "tsup src/index.ts --format esm --platform node --target node20 --out-dir dist --clean && node scripts/copy-templates.mjs",
     "dev": "tsx src/index.ts",
     "test": "vitest run",
     "lint": "eslint .",
