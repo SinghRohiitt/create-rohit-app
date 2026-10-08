@@ -4,7 +4,7 @@ export type Language = "typescript" | "javascript";
 export type Database = "postgres" | "mongodb" | "none";
 export type Authentication = "jwt" | "none";
 export type PackageManager = "npm" | "pnpm" | "yarn";
-export type ProjectType = "frontend" | "backend" | "fullstack" | "empty";
+export type ProjectType = "frontend" | "backend" | "fullstack";
 
 export interface ProjectConfig {
   readonly projectName: string;
@@ -19,19 +19,24 @@ export interface ProjectConfig {
   readonly initializeGit: boolean;
 }
 
+export interface ProjectConfigDraft extends Omit<ProjectConfig, "projectType"> {
+  readonly projectType: ProjectType | "empty";
+}
+
 export type CliMode = "interactive" | "cli";
 
 export interface ParsedProjectRequest {
   readonly mode: CliMode;
-  readonly config: ProjectConfig;
+  readonly config: ProjectConfigDraft;
+  readonly providedOptions: ProjectConfigOptions;
 }
 
 export interface ProjectConfigOptions {
   readonly frontend?: Exclude<Frontend, "none">;
   readonly backend?: Exclude<Backend, "none">;
   readonly language?: Language;
-  readonly database?: Exclude<Database, "none">;
-  readonly authentication?: Exclude<Authentication, "none">;
+  readonly database?: Database;
+  readonly authentication?: Authentication;
   readonly packageManager?: PackageManager;
   readonly installDependencies?: boolean;
   readonly initializeGit?: boolean;
@@ -65,7 +70,7 @@ export function validateProjectName(projectName: string): string | undefined {
 export function createProjectConfig(
   projectName: string,
   options: ProjectConfigOptions,
-): ProjectConfig {
+): ProjectConfigDraft {
   const nameError = validateProjectName(projectName);
   if (nameError) {
     throw new Error(nameError);
@@ -73,7 +78,7 @@ export function createProjectConfig(
 
   const frontend = options.frontend ?? "none";
   const backend = options.backend ?? "none";
-  const projectType: ProjectType =
+  const projectType: ProjectConfigDraft["projectType"] =
     frontend !== "none" && backend !== "none"
       ? "fullstack"
       : frontend !== "none"
@@ -94,4 +99,31 @@ export function createProjectConfig(
     installDependencies: options.installDependencies ?? true,
     initializeGit: options.initializeGit ?? true,
   };
+}
+
+export function validateProjectConfig(
+  config: ProjectConfigDraft,
+): string | undefined {
+  if (config.projectType === "empty") {
+    return "Select a frontend, backend, or full-stack project.";
+  }
+
+  if (config.projectType === "frontend" && config.database !== "none") {
+    return "A database requires a backend. Choose a backend or select no database.";
+  }
+
+  if (config.projectType === "frontend" && config.authentication !== "none") {
+    return "Authentication requires a backend. Choose a backend or select no authentication.";
+  }
+
+  return undefined;
+}
+
+export function isCompleteProjectConfig(
+  config: ProjectConfigDraft,
+): config is ProjectConfig {
+  return (
+    config.projectType !== "empty" &&
+    validateProjectConfig(config) === undefined
+  );
 }

@@ -3,14 +3,14 @@ import { packageConfig } from "../config/package-config.js";
 import {
   createProjectConfig,
   type ParsedProjectRequest,
-  type ProjectConfig,
+  type ProjectConfigDraft,
   type ProjectConfigOptions,
 } from "../config/project-config.js";
 
 const frontends = ["react", "next"] as const;
 const backends = ["express", "nestjs"] as const;
-const databases = ["postgres", "mongodb"] as const;
-const authenticationStrategies = ["jwt"] as const;
+const databases = ["postgres", "mongodb", "none"] as const;
+const authenticationStrategies = ["jwt", "none"] as const;
 const packageManagers = ["npm", "pnpm", "yarn"] as const;
 
 export class CliArgumentError extends Error {
@@ -33,7 +33,20 @@ function hasExplicitOptions(args: readonly string[]): boolean {
   return args.some((arg) => arg.startsWith("-"));
 }
 
+function hasFlag(args: readonly string[], flag: string): boolean {
+  return args.includes(flag);
+}
+
 function assertNoConflictingRepeatedOptions(args: readonly string[]): void {
+  if (
+    hasFlag(args, "--install-dependencies") &&
+    hasFlag(args, "--no-install")
+  ) {
+    throw new CliArgumentError(
+      "Use either --install-dependencies or --no-install, not both.",
+    );
+  }
+
   const valueOptions = new Map<string, string>();
   const valueOptionNames = new Set([
     "--frontend",
@@ -75,7 +88,7 @@ function assertNoConflictingRepeatedOptions(args: readonly string[]): void {
 
 function createProgram(
   args: readonly string[],
-  onRequest: (request: ParsedProjectRequest) => void,
+  onRequest: (request: ParsedProjectRequest) => void | Promise<void>,
 ): Command {
   assertNoConflictingRepeatedOptions(args);
   const program = new Command();
@@ -114,6 +127,7 @@ function createProgram(
         ...packageManagers,
       ]),
     )
+    .option("--install-dependencies", "install dependencies")
     .option("--no-install", "skip dependency installation")
     .option("--no-git", "skip Git initialization")
     .action((projectName: string, commandOptions: Record<string, unknown>) => {
@@ -138,15 +152,15 @@ function createProgram(
         ...(isOneOf(commandOptions.packageManager, packageManagers)
           ? { packageManager: commandOptions.packageManager }
           : {}),
-        ...(typeof commandOptions.install === "boolean"
-          ? { installDependencies: commandOptions.install }
-          : {}),
-        ...(typeof commandOptions.git === "boolean"
-          ? { initializeGit: commandOptions.git }
-          : {}),
+        ...(hasFlag(args, "--install-dependencies")
+          ? { installDependencies: true }
+          : hasFlag(args, "--no-install")
+            ? { installDependencies: false }
+            : {}),
+        ...(hasFlag(args, "--no-git") ? { initializeGit: false } : {}),
       };
 
-      let config: ProjectConfig;
+      let config: ProjectConfigDraft;
       try {
         config = createProjectConfig(projectName, options);
       } catch (error) {
@@ -154,9 +168,10 @@ function createProgram(
         throw new CliArgumentError(message);
       }
 
-      onRequest({
+      return onRequest({
         mode: hasExplicitOptions(args) ? "cli" : "interactive",
         config,
+        providedOptions: options,
       });
     });
 
@@ -165,7 +180,7 @@ function createProgram(
 
 export function createCliProgram(
   args: readonly string[],
-  onRequest: (request: ParsedProjectRequest) => void,
+  onRequest: (request: ParsedProjectRequest) => void | Promise<void>,
 ): Command {
   return createProgram(args, onRequest);
 }

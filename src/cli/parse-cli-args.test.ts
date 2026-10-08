@@ -55,6 +55,13 @@ describe("parseCliArgs", () => {
         installDependencies: true,
         initializeGit: true,
       },
+      providedOptions: {
+        frontend: "react",
+        backend: "express",
+        language: "typescript",
+        database: "postgres",
+        authentication: "jwt",
+      },
     });
   });
 
@@ -85,6 +92,7 @@ describe("parseCliArgs", () => {
         installDependencies: true,
         initializeGit: true,
       },
+      providedOptions: {},
     });
   });
 
@@ -93,6 +101,22 @@ describe("parseCliArgs", () => {
 
     expect(parsed.config.installDependencies).toBe(false);
     expect(parsed.config.initializeGit).toBe(false);
+  });
+
+  it("records install choices only when the user supplied an install flag", () => {
+    expect(parseCliArgs(["my-app"]).providedOptions).toEqual({});
+    expect(
+      parseCliArgs(["my-app", "--install-dependencies"]).providedOptions,
+    ).toMatchObject({ installDependencies: true });
+    expect(
+      parseCliArgs(["my-app", "--no-install"]).providedOptions,
+    ).toMatchObject({ installDependencies: false });
+  });
+
+  it("rejects conflicting dependency installation flags", () => {
+    expect(() =>
+      parseCliArgs(["my-app", "--install-dependencies", "--no-install"]),
+    ).toThrow(/either --install-dependencies or --no-install/i);
   });
 
   it("rejects unknown options", () => {
