@@ -18,8 +18,9 @@ With only a project name, the CLI starts an interactive configuration flow.
 Choose a frontend, backend, language, database, authentication strategy, and
 whether to install dependencies. Defaults are Full Stack, React + Vite,
 Node.js + Express, TypeScript, no database, no authentication, and install
-dependencies. A frontend-only project only allows no database and no
-authentication because those require a backend.
+dependencies. Frontend-only projects do not support a database. Selecting JWT
+for a React frontend adds a client-side token helper, but does not create a
+backend or implement login endpoints.
 
 CLI options override corresponding prompt answers, and those questions are
 skipped. Framework flags imply project type: providing both frameworks selects
@@ -45,11 +46,17 @@ templates whose `appliesTo` selectors match the resolved configuration.
 Templates use a `template.json` manifest to map source files to safe relative
 destination paths, optionally render `{{projectConfigKey}}` variables, and
 conditionally include files with `when` selectors. The catalog includes the
-shared project files and a React + Vite frontend in JavaScript or TypeScript.
+shared project files, a React + Vite frontend, and a Next.js App Router
+frontend. Both frontends support JavaScript or TypeScript.
 
 The React application includes Vite, ESLint, a typed or JavaScript API service,
 environment configuration, and starter component/page/hook/store/lib/type/
-asset directories. Selecting JWT adds a client-side token session helper and
+asset directories. The Next.js application uses the App Router, ESLint, a
+typed or JavaScript API service, environment configuration, and starter
+component/hook/lib/type/public directories. Both frontends are structured to
+consume a separately generated backend through their API base URL.
+
+Selecting JWT with React adds a client-side token session helper and
 Bearer-token API requests; it does not create or imply a backend or implement
 login endpoints. Access tokens remain in memory by default.
 

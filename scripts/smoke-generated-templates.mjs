@@ -19,6 +19,7 @@ function run(command, args, cwd) {
     cwd,
     stdio: "inherit",
     shell: process.platform === "win32" && command === "npm",
+    env: { ...process.env, NEXT_TELEMETRY_DISABLED: "1" },
   });
   if (result.error) {
     throw result.error;
@@ -31,42 +32,46 @@ function run(command, args, cwd) {
 }
 
 try {
-  for (const language of ["typescript", "javascript"]) {
-    const projectName = `react-${language}`;
-    const projectPath = path.join(temporaryRoot, projectName);
-    const languageFlag =
-      language === "typescript" ? "--typescript" : "--javascript";
-    run(
-      process.execPath,
-      [
-        cliPath,
-        projectName,
-        "--frontend",
-        "react",
-        languageFlag,
-        "--database",
-        "none",
-        "--auth",
-        "jwt",
-        "--install-dependencies",
-        "--no-git",
-      ],
-      temporaryRoot,
-    );
+  for (const frontend of ["react", "next"]) {
+    for (const language of ["typescript", "javascript"]) {
+      const projectName = `${frontend}-${language}`;
+      const projectPath = path.join(temporaryRoot, projectName);
+      const languageFlag =
+        language === "typescript" ? "--typescript" : "--javascript";
+      run(
+        process.execPath,
+        [
+          cliPath,
+          projectName,
+          "--frontend",
+          frontend,
+          languageFlag,
+          "--database",
+          "none",
+          "--auth",
+          "jwt",
+          "--install-dependencies",
+          "--no-git",
+        ],
+        temporaryRoot,
+      );
 
-    const packageJson = JSON.parse(
-      await readFile(path.join(projectPath, "package.json"), "utf8"),
-    );
-    if (packageJson.dependencies?.react === undefined) {
-      throw new Error(`${language} project is missing React dependency.`);
-    }
+      const packageJson = JSON.parse(
+        await readFile(path.join(projectPath, "package.json"), "utf8"),
+      );
+      if (packageJson.dependencies?.react === undefined) {
+        throw new Error(
+          `${frontend} ${language} project is missing React dependency.`,
+        );
+      }
 
-    run("npm", ["install", "--no-audit", "--no-fund"], projectPath);
-    if (language === "typescript") {
-      run("npm", ["run", "typecheck"], projectPath);
+      run("npm", ["install", "--no-audit", "--no-fund"], projectPath);
+      if (packageJson.scripts.typecheck) {
+        run("npm", ["run", "typecheck"], projectPath);
+      }
+      run("npm", ["run", "build"], projectPath);
+      run("npm", ["run", "lint"], projectPath);
     }
-    run("npm", ["run", "build"], projectPath);
-    run("npm", ["run", "lint"], projectPath);
   }
 } finally {
   await rm(temporaryRoot, { recursive: true, force: true });

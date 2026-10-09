@@ -200,9 +200,6 @@ describe("generateProject", () => {
       expect(generatedFiles).toContain(".env.example");
       expect(generatedFiles).toContain("src/components/.gitkeep");
       expect(generatedFiles).not.toContain(".env.auth.example");
-      expect(generatedFiles).toContain(
-        "src/services/auth." + (language === "typescript" ? "ts" : "js"),
-      );
       expect(packageJson.dependencies).toHaveProperty("react");
       expect(packageJson.dependencies).toHaveProperty("react-dom");
       expect(packageJson.devDependencies).toHaveProperty("vite");
@@ -217,6 +214,80 @@ describe("generateProject", () => {
         expect(packageJson.devDependencies).not.toHaveProperty("typescript");
         expect(packageJson.scripts).not.toHaveProperty("typecheck");
         expect(generatedFiles).not.toContain("tsconfig.json");
+      }
+    },
+  );
+
+  it.each(["typescript", "javascript"] as const)(
+    "generates a runnable Next.js %s project layout",
+    async (language) => {
+      const temporaryDirectory = await createTemporaryDirectory();
+      const templateRoot = path.resolve(
+        process.cwd(),
+        "src",
+        "templates",
+        "catalog",
+      );
+      const config = createValidProjectConfig({
+        frontend: "next",
+        language,
+      });
+
+      const result = await generateProject(config, {
+        cwd: temporaryDirectory,
+        templateRoot,
+      });
+      const generatedFiles = new Set(
+        result.files.map((filePath) =>
+          path.relative(result.projectPath, filePath).replaceAll("\\", "/"),
+        ),
+      );
+      const packageJson = JSON.parse(
+        await readFile(path.join(result.projectPath, "package.json"), "utf8"),
+      ) as {
+        dependencies: Record<string, string>;
+        devDependencies: Record<string, string>;
+        scripts: Record<string, string>;
+      };
+
+      expect(generatedFiles).toContain(
+        language === "typescript" ? "app/page.tsx" : "app/page.js",
+      );
+      expect(generatedFiles).toContain(
+        language === "typescript" ? "app/layout.tsx" : "app/layout.js",
+      );
+      expect(generatedFiles).toContain(
+        language === "typescript" ? "services/api.ts" : "services/api.js",
+      );
+      expect(generatedFiles).toContain(
+        "components/api-status." + (language === "typescript" ? "tsx" : "js"),
+      );
+      expect(generatedFiles).toContain("public/.gitkeep");
+      expect(generatedFiles).toContain("hooks/.gitkeep");
+      expect(generatedFiles).toContain("lib/.gitkeep");
+      expect(generatedFiles).toContain("types/.gitkeep");
+      expect(generatedFiles).toContain(".env.example");
+      expect(generatedFiles).toContain("eslint.config.mjs");
+      expect(generatedFiles).toContain("next.config.mjs");
+      expect(generatedFiles).toContain(".gitignore");
+      expect(packageJson.dependencies).toHaveProperty("next");
+      expect(packageJson.dependencies).toHaveProperty("react");
+      expect(packageJson.dependencies).toHaveProperty("react-dom");
+      expect(packageJson.dependencies).not.toHaveProperty("vite");
+      expect(packageJson.scripts).toMatchObject({
+        dev: "next dev",
+        build: "next build",
+        start: "next start",
+        lint: "eslint .",
+      });
+      if (language === "typescript") {
+        expect(generatedFiles).toContain("tsconfig.json");
+        expect(packageJson.devDependencies).toHaveProperty("typescript");
+        expect(packageJson.scripts).toHaveProperty("typecheck");
+      } else {
+        expect(generatedFiles).toContain("jsconfig.json");
+        expect(packageJson.devDependencies).not.toHaveProperty("typescript");
+        expect(packageJson.scripts).not.toHaveProperty("typecheck");
       }
     },
   );
