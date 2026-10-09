@@ -95,4 +95,5 @@ npm run build
 npm run test:templates
 npm run test:backend-templates
 npm run test:nestjs-templates
+npm run test:fullstack-templates
 ```

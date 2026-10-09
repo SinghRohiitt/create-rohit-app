@@ -14,6 +14,7 @@ const projectRoot = path.resolve(
 const cliPath = path.join(projectRoot, "dist", "index.js");
 const backendOnly = process.argv.includes("--backend-only");
 const nestOnly = process.argv.includes("--nestjs-only");
+const fullStackOnly = process.argv.includes("--fullstack-only");
 const temporaryRoot = await mkdtemp(
   path.join(os.tmpdir(), "create-rohit-app-template-smoke-"),
 );
@@ -156,7 +157,7 @@ async function verifyRunningNestBackend(projectPath) {
 }
 
 try {
-  if (!backendOnly && !nestOnly) {
+  if (!backendOnly && !nestOnly && !fullStackOnly) {
     for (const frontend of ["react", "next"]) {
       for (const language of ["typescript", "javascript"]) {
         const projectName = `${frontend}-${language}`;
@@ -200,7 +201,7 @@ try {
     }
   }
 
-  if (!nestOnly) {
+  if (!nestOnly && !fullStackOnly) {
     for (const language of ["typescript", "javascript"]) {
       const languageFlag =
         language === "typescript" ? "--typescript" : "--javascript";
@@ -327,63 +328,237 @@ try {
     }
   }
 
-  const nestConfigurations = [
-    { database: "none", authentication: "none" },
-    { database: "postgres", authentication: "none" },
-    { database: "postgres", authentication: "jwt" },
-    { database: "mongodb", authentication: "none" },
-    { database: "mongodb", authentication: "jwt" },
+  if (!fullStackOnly) {
+    const nestConfigurations = [
+      { database: "none", authentication: "none" },
+      { database: "postgres", authentication: "none" },
+      { database: "postgres", authentication: "jwt" },
+      { database: "mongodb", authentication: "none" },
+      { database: "mongodb", authentication: "jwt" },
+    ];
+    for (const { database, authentication } of nestConfigurations) {
+      const projectName = `nestjs-${database}-${authentication}`;
+      const projectPath = path.join(temporaryRoot, projectName);
+      run(
+        process.execPath,
+        [
+          cliPath,
+          projectName,
+          "--backend",
+          "nestjs",
+          "--typescript",
+          "--database",
+          database,
+          "--auth",
+          authentication,
+          "--install-dependencies",
+          "--no-git",
+        ],
+        temporaryRoot,
+      );
+
+      const packageJson = JSON.parse(
+        await readFile(path.join(projectPath, "package.json"), "utf8"),
+      );
+      if (packageJson.dependencies?.["@nestjs/core"] === undefined) {
+        throw new Error(`${projectName} is missing NestJS dependencies.`);
+      }
+      if (database === "postgres") {
+        if (packageJson.dependencies?.["@prisma/client"] === undefined) {
+          throw new Error(`${projectName} is missing Prisma Client.`);
+        }
+        await readFile(
+          path.join(projectPath, "prisma", "schema.prisma"),
+          "utf8",
+        );
+      } else if (database === "mongodb") {
+        if (packageJson.dependencies?.mongoose === undefined) {
+          throw new Error(`${projectName} is missing Mongoose.`);
+        }
+      }
+      if (authentication === "jwt") {
+        if (packageJson.dependencies?.["@nestjs/jwt"] === undefined) {
+          throw new Error(
+            `${projectName} is missing JWT authentication dependencies.`,
+          );
+        }
+        const environment = await readFile(
+          path.join(projectPath, ".env.example"),
+          "utf8",
+        );
+        if (!environment.includes("JWT_SECRET=")) {
+          throw new Error(
+            `${projectName} is missing JWT_SECRET configuration.`,
+          );
+        }
+      }
+
+      run("npm", ["install", "--no-audit", "--no-fund"], projectPath);
+      run("npm", ["test"], projectPath);
+      run("npm", ["run", "lint"], projectPath);
+      run("npm", ["run", "typecheck"], projectPath);
+      run("npm", ["run", "build"], projectPath);
+      if (database === "none" && authentication === "none") {
+        await verifyRunningNestBackend(projectPath);
+      }
+    }
+
+    const nestWorkspaceName = "fullstack-nestjs-typescript";
+    const nestWorkspacePath = path.join(temporaryRoot, nestWorkspaceName);
+    run(
+      process.execPath,
+      [
+        cliPath,
+        nestWorkspaceName,
+        "--frontend",
+        "react",
+        "--backend",
+        "nestjs",
+        "--typescript",
+        "--database",
+        "none",
+        "--auth",
+        "none",
+        "--install-dependencies",
+        "--no-git",
+      ],
+      temporaryRoot,
+    );
+    const nestWorkspacePackage = JSON.parse(
+      await readFile(path.join(nestWorkspacePath, "package.json"), "utf8"),
+    );
+    if (
+      JSON.stringify(nestWorkspacePackage.workspaces) !==
+      JSON.stringify(["frontend", "backend"])
+    ) {
+      throw new Error(
+        `${nestWorkspaceName} is missing its application workspaces.`,
+      );
+    }
+
+    run("npm", ["install", "--no-audit", "--no-fund"], nestWorkspacePath);
+    run("npm", ["test"], nestWorkspacePath);
+    run("npm", ["run", "lint"], nestWorkspacePath);
+    if (nestWorkspacePackage.scripts.typecheck) {
+      run("npm", ["run", "typecheck"], nestWorkspacePath);
+    }
+    run("npm", ["run", "build"], nestWorkspacePath);
+    await verifyRunningNestBackend(path.join(nestWorkspacePath, "backend"));
+  }
+
+  const fullStackConfigurations = [
+    {
+      name: "react-express-postgres-jwt-typescript",
+      frontend: "react",
+      backend: "express",
+      database: "postgres",
+    },
+    {
+      name: "next-nestjs-mongodb-jwt-typescript",
+      frontend: "next",
+      backend: "nestjs",
+      database: "mongodb",
+    },
   ];
-  for (const { database, authentication } of nestConfigurations) {
-    const projectName = `nestjs-${database}-${authentication}`;
+  for (const configuration of fullStackConfigurations) {
+    const projectName = `fullstack-${configuration.name}`;
     const projectPath = path.join(temporaryRoot, projectName);
     run(
       process.execPath,
       [
         cliPath,
         projectName,
+        "--frontend",
+        configuration.frontend,
         "--backend",
-        "nestjs",
+        configuration.backend,
         "--typescript",
         "--database",
-        database,
+        configuration.database,
         "--auth",
-        authentication,
+        "jwt",
         "--install-dependencies",
         "--no-git",
       ],
       temporaryRoot,
     );
-
     const packageJson = JSON.parse(
       await readFile(path.join(projectPath, "package.json"), "utf8"),
     );
-    if (packageJson.dependencies?.["@nestjs/core"] === undefined) {
-      throw new Error(`${projectName} is missing NestJS dependencies.`);
+    const frontendPackage = JSON.parse(
+      await readFile(
+        path.join(projectPath, "frontend", "package.json"),
+        "utf8",
+      ),
+    );
+    const backendPackage = JSON.parse(
+      await readFile(path.join(projectPath, "backend", "package.json"), "utf8"),
+    );
+    if (
+      JSON.stringify(packageJson.workspaces) !==
+      JSON.stringify(["frontend", "backend"])
+    ) {
+      throw new Error(`${projectName} is missing its workspace configuration.`);
     }
-    if (database === "postgres") {
-      if (packageJson.dependencies?.["@prisma/client"] === undefined) {
-        throw new Error(`${projectName} is missing Prisma Client.`);
-      }
-      await readFile(path.join(projectPath, "prisma", "schema.prisma"), "utf8");
-    } else if (database === "mongodb") {
-      if (packageJson.dependencies?.mongoose === undefined) {
-        throw new Error(`${projectName} is missing Mongoose.`);
-      }
+    if (
+      packageJson.devDependencies?.concurrently === undefined ||
+      !packageJson.scripts.dev.includes("concurrently")
+    ) {
+      throw new Error(
+        `${projectName} cannot start both applications together.`,
+      );
     }
-    if (authentication === "jwt") {
-      if (packageJson.dependencies?.["@nestjs/jwt"] === undefined) {
-        throw new Error(
-          `${projectName} is missing JWT authentication dependencies.`,
-        );
+    if (
+      frontendPackage.dependencies?.react === undefined ||
+      (backendPackage.dependencies?.["@nestjs/core"] !== undefined) !==
+        (configuration.backend === "nestjs")
+    ) {
+      throw new Error(
+        `${projectName} has incorrect frontend/backend packages.`,
+      );
+    }
+    if (configuration.database === "postgres") {
+      if (backendPackage.dependencies?.["@prisma/client"] === undefined) {
+        throw new Error(`${projectName} is missing the PostgreSQL ORM.`);
       }
-      const environment = await readFile(
-        path.join(projectPath, ".env.example"),
+      await readFile(
+        path.join(projectPath, "backend", "prisma", "schema.prisma"),
         "utf8",
       );
-      if (!environment.includes("JWT_SECRET=")) {
-        throw new Error(`${projectName} is missing JWT_SECRET configuration.`);
-      }
+    } else if (backendPackage.dependencies?.mongoose === undefined) {
+      throw new Error(`${projectName} is missing the MongoDB ODM.`);
+    }
+    if (
+      configuration.frontend === "next" &&
+      !frontendPackage.scripts.dev.includes("--port 3001")
+    ) {
+      throw new Error(`${projectName} does not reserve port 3000 for its API.`);
+    }
+    const rootReadme = await readFile(
+      path.join(projectPath, "README.md"),
+      "utf8",
+    );
+    const frontendEnvironment = await readFile(
+      path.join(projectPath, "frontend", ".env.example"),
+      "utf8",
+    );
+    const backendEnvironment = await readFile(
+      path.join(projectPath, "backend", ".env.example"),
+      "utf8",
+    );
+    if (
+      !rootReadme.includes("frontend/") ||
+      !rootReadme.includes("backend/") ||
+      !rootReadme.includes("JWT") ||
+      !rootReadme.includes("run dev:frontend") ||
+      !frontendEnvironment.includes(
+        configuration.frontend === "react"
+          ? "VITE_API_URL"
+          : "NEXT_PUBLIC_API_URL",
+      ) ||
+      !backendEnvironment.includes("JWT_SECRET=")
+    ) {
+      throw new Error(`${projectName} is missing full-stack setup guidance.`);
     }
 
     run("npm", ["install", "--no-audit", "--no-fund"], projectPath);
@@ -391,52 +566,7 @@ try {
     run("npm", ["run", "lint"], projectPath);
     run("npm", ["run", "typecheck"], projectPath);
     run("npm", ["run", "build"], projectPath);
-    if (database === "none" && authentication === "none") {
-      await verifyRunningNestBackend(projectPath);
-    }
   }
-
-  const nestWorkspaceName = "fullstack-nestjs-typescript";
-  const nestWorkspacePath = path.join(temporaryRoot, nestWorkspaceName);
-  run(
-    process.execPath,
-    [
-      cliPath,
-      nestWorkspaceName,
-      "--frontend",
-      "react",
-      "--backend",
-      "nestjs",
-      "--typescript",
-      "--database",
-      "none",
-      "--auth",
-      "none",
-      "--install-dependencies",
-      "--no-git",
-    ],
-    temporaryRoot,
-  );
-  const nestWorkspacePackage = JSON.parse(
-    await readFile(path.join(nestWorkspacePath, "package.json"), "utf8"),
-  );
-  if (
-    JSON.stringify(nestWorkspacePackage.workspaces) !==
-    JSON.stringify(["frontend", "backend"])
-  ) {
-    throw new Error(
-      `${nestWorkspaceName} is missing its application workspaces.`,
-    );
-  }
-
-  run("npm", ["install", "--no-audit", "--no-fund"], nestWorkspacePath);
-  run("npm", ["test"], nestWorkspacePath);
-  run("npm", ["run", "lint"], nestWorkspacePath);
-  if (nestWorkspacePackage.scripts.typecheck) {
-    run("npm", ["run", "typecheck"], nestWorkspacePath);
-  }
-  run("npm", ["run", "build"], nestWorkspacePath);
-  await verifyRunningNestBackend(path.join(nestWorkspacePath, "backend"));
 } finally {
   await rm(temporaryRoot, { recursive: true, force: true });
 }

@@ -514,8 +514,10 @@ describe("generateProject", () => {
     ) as { name: string };
 
     expect(rootPackage.workspaces).toEqual(["frontend", "backend"]);
+    expect(rootPackage.scripts.dev).toContain("concurrently");
     expect(rootPackage.scripts).toHaveProperty("dev:frontend");
     expect(rootPackage.scripts).toHaveProperty("dev:backend");
+    expect(rootPackage.scripts).toHaveProperty("db:migrate:dev");
     expect(
       new Set([rootPackage.name, frontendPackage.name, backendPackage.name])
         .size,
@@ -524,8 +526,102 @@ describe("generateProject", () => {
     expect(relativeFiles).toContain("backend/src/server.ts");
     expect(relativeFiles).toContain("frontend/.env.example");
     expect(relativeFiles).toContain("backend/.env.example");
-    expect(relativeFiles).toContain("README.fullstack.md");
+    expect(relativeFiles).toContain("README.md");
+    expect(relativeFiles).not.toContain("README.fullstack.md");
+    const rootReadme = await readFile(
+      path.join(result.projectPath, "README.md"),
+      "utf8",
+    );
+    expect(rootReadme).toContain("frontend/");
+    expect(rootReadme).toContain("backend/");
+    expect(rootReadme).toContain("run dev");
   });
+
+  it.each([
+    {
+      frontend: "react",
+      backend: "express",
+      database: "postgres",
+      expectedFrontendApi: "VITE_API_URL",
+      expectedOrm: "@prisma/client",
+    },
+    {
+      frontend: "next",
+      backend: "nestjs",
+      database: "mongodb",
+      expectedFrontendApi: "NEXT_PUBLIC_API_URL",
+      expectedOrm: "mongoose",
+    },
+  ] as const)(
+    "composes full stack $frontend + $backend with $database and JWT",
+    async ({
+      frontend,
+      backend,
+      database,
+      expectedFrontendApi,
+      expectedOrm,
+    }) => {
+      const temporaryDirectory = await createTemporaryDirectory();
+      const templateRoot = path.resolve(
+        process.cwd(),
+        "src",
+        "templates",
+        "catalog",
+      );
+      const config = createValidProjectConfig({
+        frontend,
+        backend,
+        language: "typescript",
+        database,
+        authentication: "jwt",
+      });
+      const result = await generateProject(config, {
+        cwd: temporaryDirectory,
+        templateRoot,
+      });
+      const frontendPackage = JSON.parse(
+        await readFile(
+          path.join(result.projectPath, "frontend", "package.json"),
+          "utf8",
+        ),
+      ) as { dependencies: Record<string, string> };
+      const backendPackage = JSON.parse(
+        await readFile(
+          path.join(result.projectPath, "backend", "package.json"),
+          "utf8",
+        ),
+      ) as { dependencies: Record<string, string> };
+      const frontendEnvironment = await readFile(
+        path.join(result.projectPath, "frontend", ".env.example"),
+        "utf8",
+      );
+      const backendEnvironment = await readFile(
+        path.join(result.projectPath, "backend", ".env.example"),
+        "utf8",
+      );
+
+      expect(frontendPackage.dependencies).toHaveProperty("react");
+      expect(backendPackage.dependencies).toHaveProperty(expectedOrm);
+      expect(frontendEnvironment).toContain(expectedFrontendApi);
+      expect(backendEnvironment).toContain("JWT_SECRET=");
+      expect(backendEnvironment).toContain("PORT=3000");
+      expect(
+        await readFile(path.join(result.projectPath, ".gitignore"), "utf8"),
+      ).toContain(".env");
+      if (frontend === "react") {
+        expect(
+          await readFile(
+            path.join(result.projectPath, "frontend", "vite.config.ts"),
+            "utf8",
+          ),
+        ).toContain("http://localhost:3000");
+      } else {
+        expect(frontendEnvironment).toContain(
+          "NEXT_PUBLIC_API_URL=http://localhost:3000/api",
+        );
+      }
+    },
+  );
 
   it.each(["typescript", "javascript"] as const)(
     "generates a runnable React + Vite %s project layout",
@@ -650,9 +746,9 @@ describe("generateProject", () => {
       expect(packageJson.dependencies).toHaveProperty("react-dom");
       expect(packageJson.dependencies).not.toHaveProperty("vite");
       expect(packageJson.scripts).toMatchObject({
-        dev: "next dev",
+        dev: "next dev --port 3001",
         build: "next build",
-        start: "next start",
+        start: "next start --port 3001",
         lint: "eslint .",
       });
       if (language === "typescript") {

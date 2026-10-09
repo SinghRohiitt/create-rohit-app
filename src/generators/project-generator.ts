@@ -16,6 +16,9 @@ import {
   validateProjectName,
 } from "../config/project-config.js";
 import type { ProjectConfig } from "../config/project-config.js";
+import { resolveBackendTemplates } from "./backend-generator.js";
+import { resolveFrontendTemplates } from "./frontend-generator.js";
+import { resolveFullStackTemplates } from "./fullstack-generator.js";
 import {
   DestinationConflictError,
   GenerationError,
@@ -80,7 +83,23 @@ export async function generateProject(
   const templates = await discoverTemplates(
     path.resolve(options.templateRoot ?? defaultTemplateRoot),
   );
-  const selectedTemplates = selectTemplates(templates, config);
+  const selectedTemplates =
+    config.projectType === "fullstack"
+      ? resolveFullStackTemplates(templates, config)
+      : [
+          ...selectTemplates(templates, config).filter(
+            ({ manifest }) =>
+              manifest.appliesTo?.frontend === undefined &&
+              manifest.appliesTo?.backend === undefined,
+          ),
+          ...(config.frontend !== "none"
+            ? resolveFrontendTemplates(templates, config)
+            : resolveBackendTemplates(templates, config)),
+        ].sort(
+          (left, right) =>
+            (left.manifest.order ?? 0) - (right.manifest.order ?? 0) ||
+            left.manifest.id.localeCompare(right.manifest.id),
+        );
   if (selectedTemplates.length === 0) {
     throw new TemplateEngineError(
       `No templates are available for project type "${config.projectType}".`,
