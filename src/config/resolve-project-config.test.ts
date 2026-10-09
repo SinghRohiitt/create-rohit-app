@@ -108,6 +108,16 @@ describe("resolveProjectConfig", () => {
     expect(prompts.selectLanguage).not.toHaveBeenCalled();
   });
 
+  it("requires a persistent database for Express JWT authentication", async () => {
+    await expect(
+      resolveProjectConfig(
+        "my-app",
+        { backend: "express", database: "none", authentication: "jwt" },
+        createPrompts(),
+      ),
+    ).rejects.toThrow("JWT authentication requires a persistent database");
+  });
+
   it("allows frontend-only JWT configuration without inventing a backend", async () => {
     const prompts = createPrompts();
     const config = await resolveProjectConfig(

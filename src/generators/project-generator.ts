@@ -1,4 +1,5 @@
 import {
+  open,
   lstat,
   mkdir,
   readFile,
@@ -7,6 +8,7 @@ import {
   unlink,
   writeFile,
 } from "node:fs/promises";
+import type { FileHandle } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import {
@@ -39,6 +41,7 @@ interface PlannedFile {
   readonly source: string;
   readonly destination: string;
   readonly templateContent: boolean;
+  readonly mergeJson: boolean;
 }
 
 const defaultTemplateRoot = path.resolve(
@@ -93,7 +96,9 @@ export async function generateProject(
     projectPath,
     plannedFiles,
   );
-  const files = plannedFiles.map(({ destination }) => destination);
+  const files = [
+    ...new Set(plannedFiles.map(({ destination }) => destination)),
+  ];
 
   if (options.dryRun) {
     return { projectPath, files, dryRun: true };
@@ -109,7 +114,7 @@ async function createFilePlan(
   projectPath: string,
 ): Promise<PlannedFile[]> {
   const plannedFiles: PlannedFile[] = [];
-  const destinations = new Set<string>();
+  const destinations = new Map<string, boolean>();
 
   for (const template of templates) {
     for (const file of template.manifest.files) {
@@ -118,23 +123,36 @@ async function createFilePlan(
       }
 
       const source = await resolveTemplateSource(template, file.source);
-      const destination = resolveDestinationPath(projectPath, file.destination);
+      const destinationPrefix =
+        template.manifest.destinationPrefixByProjectType?.[config.projectType];
+      const destination = resolveDestinationPath(
+        projectPath,
+        destinationPrefix
+          ? `${destinationPrefix}/${file.destination}`
+          : file.destination,
+      );
       const normalizedDestination =
         process.platform === "win32"
           ? destination.toLocaleLowerCase("en-US")
           : destination;
-      if (destinations.has(normalizedDestination)) {
+      const mergeJson = file.merge === "json";
+      const previousMergeJson = destinations.get(normalizedDestination);
+      if (
+        previousMergeJson !== undefined &&
+        (!mergeJson || !previousMergeJson)
+      ) {
         throw new InvalidTemplateError(
           `Multiple templates generate the same destination "${file.destination}".`,
         );
       }
-      destinations.add(normalizedDestination);
+      destinations.set(normalizedDestination, mergeJson);
 
       plannedFiles.push({
         template,
         source,
         destination,
         templateContent: file.template ?? true,
+        mergeJson,
       });
     }
   }
@@ -225,6 +243,10 @@ async function writeProject(
 ): Promise<void> {
   const createdDirectories: string[] = [];
   const createdFiles: string[] = [];
+  const mergedFiles = new Map<
+    string,
+    { readonly handle: FileHandle; value: Record<string, unknown> }
+  >();
 
   try {
     if (destinationExists) {
@@ -232,28 +254,63 @@ async function writeProject(
     } else {
       await createDirectory(projectPath, createdDirectories);
     }
+    const writtenDestinations = new Set<string>();
     for (const file of files) {
       const parentPath = path.dirname(file.destination);
       await createDirectoryTree(parentPath, projectPath, createdDirectories);
 
       const fileContent = await readFile(file.source);
+      let content: string | Buffer = fileContent;
       if (file.templateContent) {
-        const rendered = renderTemplate(
+        content = renderTemplate(
           fileContent.toString("utf8"),
           config,
           file.source,
         );
-        await writeFile(file.destination, rendered, {
-          encoding: "utf8",
+      }
+      const alreadyWritten = writtenDestinations.has(file.destination);
+      if (file.mergeJson) {
+        const overlayValue: unknown = JSON.parse(content.toString());
+        if (!isJsonRecord(overlayValue)) {
+          throw new InvalidTemplateError(
+            'Files using "merge": "json" must contain JSON objects.',
+          );
+        }
+        const existing = mergedFiles.get(file.destination);
+        if (alreadyWritten && existing) {
+          const mergedValue = mergeJsonObjects(existing.value, overlayValue);
+          const serialized = `${JSON.stringify(mergedValue, null, 2)}\n`;
+          await existing.handle.truncate(0);
+          await existing.handle.write(serialized, 0, "utf8");
+          await existing.handle.truncate(Buffer.byteLength(serialized));
+          existing.value = mergedValue;
+        } else {
+          const handle = await open(file.destination, "wx");
+          createdFiles.push(file.destination);
+          mergedFiles.set(file.destination, { handle, value: overlayValue });
+          await handle.writeFile(`${JSON.stringify(overlayValue, null, 2)}\n`);
+        }
+      } else {
+        await writeFile(file.destination, content, {
           flag: "wx",
         });
-      } else {
-        await writeFile(file.destination, fileContent, { flag: "wx" });
+        createdFiles.push(file.destination);
       }
-      createdFiles.push(file.destination);
+      writtenDestinations.add(file.destination);
+    }
+    const closeErrors = await closeMergedFiles(mergedFiles);
+    if (closeErrors.length > 0) {
+      throw new AggregateError(
+        closeErrors,
+        "Could not close generated JSON files.",
+      );
     }
   } catch (error) {
-    const cleanupErrors = await rollback(createdFiles, createdDirectories);
+    const closeErrors = await closeMergedFiles(mergedFiles);
+    const cleanupErrors = [
+      ...closeErrors,
+      ...(await rollback(createdFiles, createdDirectories)),
+    ];
     if (cleanupErrors.length > 0) {
       throw new AggregateError(
         [error, ...cleanupErrors],
@@ -261,9 +318,53 @@ async function writeProject(
         { cause: error },
       );
     }
+
     const message = error instanceof Error ? error.message : String(error);
     throw new GenerationError(message, { cause: error });
   }
+}
+
+function mergeJsonObjects(
+  base: Record<string, unknown>,
+  overlay: Record<string, unknown>,
+): Record<string, unknown> {
+  const result: Record<string, unknown> = { ...base };
+  for (const [key, value] of Object.entries(overlay)) {
+    const mergedValue =
+      isJsonRecord(result[key]) && isJsonRecord(value)
+        ? mergeJsonObjects(result[key], value)
+        : value;
+    Object.defineProperty(result, key, {
+      value: mergedValue,
+      enumerable: true,
+      configurable: true,
+      writable: true,
+    });
+  }
+  return result;
+}
+
+function isJsonRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+async function closeMergedFiles(
+  files: Map<
+    string,
+    { readonly handle: FileHandle; value: Record<string, unknown> }
+  >,
+): Promise<string[]> {
+  const errors: string[] = [];
+  for (const [filePath, file] of files) {
+    try {
+      await file.handle.close();
+      files.delete(filePath);
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      errors.push(`Could not close "${filePath}": ${detail}`);
+    }
+  }
+  return errors;
 }
 
 async function assertExistingDirectory(directory: string): Promise<void> {

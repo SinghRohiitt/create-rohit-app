@@ -19,6 +19,7 @@
     "dev": "tsx src/index.ts",
     "test": "vitest run",
     "test:templates": "npm run build && node scripts/smoke-generated-templates.mjs",
+    "test:backend-templates": "npm run build && node scripts/smoke-generated-templates.mjs --backend-only",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "npm run build"

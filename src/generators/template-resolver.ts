@@ -101,11 +101,17 @@ function parseFile(
   if (value.template !== undefined && typeof value.template !== "boolean") {
     throw new InvalidTemplateError(`${context}: "template" must be a boolean.`);
   }
+  if (value.merge !== undefined && value.merge !== "json") {
+    throw new InvalidTemplateError(
+      `${context}: "merge" must be "json" when specified.`,
+    );
+  }
 
   return {
     source: value.source,
     destination: value.destination,
     ...(value.template === undefined ? {} : { template: value.template }),
+    ...(value.merge === undefined ? {} : { merge: value.merge }),
     ...(value.when === undefined
       ? {}
       : {
@@ -202,10 +208,40 @@ function parseManifest(value: unknown, manifestPath: string): TemplateManifest {
     appliesTo = selectors;
   }
 
+  let destinationPrefixByProjectType: TemplateManifest["destinationPrefixByProjectType"];
+  if (value.destinationPrefixByProjectType !== undefined) {
+    if (!isRecord(value.destinationPrefixByProjectType)) {
+      throw new InvalidTemplateError(
+        `Template "${id}": "destinationPrefixByProjectType" must be an object.`,
+      );
+    }
+    const prefixes: NonNullable<
+      TemplateManifest["destinationPrefixByProjectType"]
+    > = {};
+    for (const [projectType, prefix] of Object.entries(
+      value.destinationPrefixByProjectType,
+    )) {
+      if (
+        !selectorValues.projectType.has(projectType) ||
+        typeof prefix !== "string" ||
+        !isSafeRelativePath(prefix)
+      ) {
+        throw new InvalidTemplateError(
+          `Template "${id}": destination prefix for "${projectType}" must be a safe relative path.`,
+        );
+      }
+      prefixes[projectType as ProjectConfig["projectType"]] = prefix;
+    }
+    destinationPrefixByProjectType = prefixes;
+  }
+
   return {
     id,
     description: value.description,
     ...(appliesTo === undefined ? {} : { appliesTo }),
+    ...(destinationPrefixByProjectType === undefined
+      ? {}
+      : { destinationPrefixByProjectType }),
     ...(value.order === undefined ? {} : { order: value.order }),
     files: value.files.map((file, index) => parseFile(file, id, index)),
   };

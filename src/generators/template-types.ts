@@ -11,6 +11,7 @@ export interface TemplateFile {
   readonly source: string;
   readonly destination: string;
   readonly template?: boolean;
+  readonly merge?: "json";
   readonly when?: TemplateCondition | readonly TemplateCondition[];
 }
 
@@ -22,6 +23,9 @@ export interface TemplateManifest {
   readonly id: string;
   readonly description: string;
   readonly appliesTo?: TemplateSelector;
+  readonly destinationPrefixByProjectType?: Partial<
+    Record<ProjectConfig["projectType"], string>
+  >;
   readonly order?: number;
   readonly files: readonly TemplateFile[];
 }

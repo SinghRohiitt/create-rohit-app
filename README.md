@@ -45,9 +45,12 @@ The generator discovers templates from the packaged catalog and composes all
 templates whose `appliesTo` selectors match the resolved configuration.
 Templates use a `template.json` manifest to map source files to safe relative
 destination paths, optionally render `{{projectConfigKey}}` variables, and
-conditionally include files with `when` selectors. The catalog includes the
-shared project files, a React + Vite frontend, and a Next.js App Router
-frontend. Both frontends support JavaScript or TypeScript.
+conditionally include files with `when` selectors. Manifests can deep-merge
+JSON package metadata. Full-stack projects use a root workspace with
+independent `frontend/` and `backend/` applications. The catalog includes
+React + Vite and Next.js App Router frontends, and a Node.js + Express backend.
+Each supports JavaScript or TypeScript; Express can use PostgreSQL with Prisma,
+MongoDB with Mongoose, or no database.
 
 The React application includes Vite, ESLint, a typed or JavaScript API service,
 environment configuration, and starter component/page/hook/store/lib/type/
@@ -55,10 +58,19 @@ asset directories. The Next.js application uses the App Router, ESLint, a
 typed or JavaScript API service, environment configuration, and starter
 component/hook/lib/type/public directories. Both frontends are structured to
 consume a separately generated backend through their API base URL.
+Express projects also include `README.backend.md` with API and database setup
+instructions.
 
 Selecting JWT with React adds a client-side token session helper and
 Bearer-token API requests; it does not create or imply a backend or implement
 login endpoints. Access tokens remain in memory by default.
+
+Express JWT authentication generates registration and login endpoints, bcrypt
+password hashing, short-lived JWTs, protected current-user and logout routes,
+request validation, and centralized errors. Persistent storage is required;
+choose PostgreSQL or MongoDB when enabling backend JWT authentication. JWT
+logout is stateless: clients discard their access token, which expires after
+15 minutes.
 
 Existing non-empty destination directories are never overwritten. Use
 `--dry-run` to print planned file paths without writing any files. Dependency
@@ -79,4 +91,6 @@ npm run typecheck
 npm run lint
 npm test
 npm run build
+npm run test:templates
+npm run test:backend-templates
 ```

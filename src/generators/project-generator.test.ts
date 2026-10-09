@@ -95,6 +95,18 @@ describe("template resolver", () => {
     );
   });
 
+  it("rejects unsafe project-type destination prefixes", async () => {
+    const temporaryDirectory = await createTemporaryDirectory();
+    const templateRoot = await createCatalog(temporaryDirectory, {
+      ...baseManifest,
+      destinationPrefixByProjectType: { fullstack: "../outside" },
+    });
+
+    await expect(discoverTemplates(templateRoot)).rejects.toThrow(
+      InvalidTemplateError,
+    );
+  });
+
   it("selects templates by configuration selectors", async () => {
     const temporaryDirectory = await createTemporaryDirectory();
     const templateRoot = await createCatalog(temporaryDirectory, baseManifest);
@@ -152,6 +164,282 @@ describe("template renderer", () => {
 });
 
 describe("generateProject", () => {
+  it.each([
+    { database: "none", authentication: "none" },
+    { database: "postgres", authentication: "none" },
+    { database: "postgres", authentication: "jwt" },
+    { database: "mongodb", authentication: "none" },
+    { database: "mongodb", authentication: "jwt" },
+  ] as const)(
+    "generates Express backend configuration for $database with $authentication auth",
+    async ({ database, authentication }) => {
+      const temporaryDirectory = await createTemporaryDirectory();
+      const templateRoot = path.resolve(
+        process.cwd(),
+        "src",
+        "templates",
+        "catalog",
+      );
+      const config = createValidProjectConfig({
+        backend: "express",
+        database,
+        authentication,
+      });
+      const result = await generateProject(config, {
+        cwd: temporaryDirectory,
+        templateRoot,
+      });
+      const generatedFiles = new Set(
+        result.files.map((filePath) =>
+          path.relative(result.projectPath, filePath).replaceAll("\\", "/"),
+        ),
+      );
+      const packageJson = JSON.parse(
+        await readFile(path.join(result.projectPath, "package.json"), "utf8"),
+      ) as {
+        dependencies: Record<string, string>;
+        devDependencies: Record<string, string>;
+        scripts: Record<string, string>;
+      };
+      const environment = await readFile(
+        path.join(result.projectPath, ".env.example"),
+        "utf8",
+      );
+
+      expect(generatedFiles).toContain("src/app.ts");
+      expect(generatedFiles).toContain("src/server.ts");
+      expect(generatedFiles).toContain("src/config/database.ts");
+      expect(generatedFiles).toContain("src/routes/health.ts");
+      expect(generatedFiles).toContain("src/middleware/error-handler.ts");
+      expect(generatedFiles).toContain("tests/app.test.ts");
+      expect(generatedFiles).toContain("README.backend.md");
+      expect(generatedFiles).not.toContain(".env.auth.example");
+      expect(generatedFiles).not.toContain(".env.database.example");
+      expect(packageJson.dependencies).toHaveProperty("express");
+      expect(environment).toContain("PORT=3000");
+
+      if (database === "postgres") {
+        expect(packageJson.dependencies).toHaveProperty("@prisma/client");
+        expect(packageJson.dependencies).not.toHaveProperty("mongoose");
+        expect(packageJson.devDependencies).toHaveProperty("prisma");
+        expect(packageJson.scripts).toHaveProperty("db:migrate:dev");
+        expect(generatedFiles).toContain("prisma/schema.prisma");
+        expect(environment).toContain("DATABASE_URL=");
+      } else if (database === "mongodb") {
+        expect(packageJson.dependencies).toHaveProperty("mongoose");
+        expect(packageJson.dependencies).not.toHaveProperty("@prisma/client");
+        expect(generatedFiles).not.toContain("prisma/schema.prisma");
+        expect(environment).toContain("DATABASE_URL=mongodb://");
+      } else {
+        expect(packageJson.dependencies).not.toHaveProperty("mongoose");
+        expect(packageJson.dependencies).not.toHaveProperty("@prisma/client");
+        expect(environment).not.toContain("DATABASE_URL");
+      }
+
+      if (authentication === "jwt") {
+        expect(packageJson.dependencies).toHaveProperty("bcryptjs");
+        expect(packageJson.dependencies).toHaveProperty("jsonwebtoken");
+        expect(generatedFiles).toContain("src/modules/auth/auth-service.ts");
+        expect(generatedFiles).toContain("src/modules/auth/auth-middleware.ts");
+        expect(generatedFiles).toContain("src/modules/auth/auth-router.ts");
+        expect(generatedFiles).toContain("tests/auth.test.ts");
+        expect(environment).toContain("JWT_SECRET=");
+        expect(environment).not.toContain("replace-with");
+      } else {
+        expect(packageJson.dependencies).not.toHaveProperty("bcryptjs");
+        expect(packageJson.dependencies).not.toHaveProperty("jsonwebtoken");
+        expect(generatedFiles).not.toContain("tests/auth.test.ts");
+        expect(environment).not.toContain("JWT_SECRET");
+      }
+    },
+  );
+
+  it.each(["typescript", "javascript"] as const)(
+    "generates an Express %s backend",
+    async (language) => {
+      const temporaryDirectory = await createTemporaryDirectory();
+      const templateRoot = path.resolve(
+        process.cwd(),
+        "src",
+        "templates",
+        "catalog",
+      );
+      const config = createValidProjectConfig({
+        backend: "express",
+        language,
+        database: "postgres",
+        authentication: "jwt",
+      });
+      const result = await generateProject(config, {
+        cwd: temporaryDirectory,
+        templateRoot,
+      });
+      const packageJson = JSON.parse(
+        await readFile(path.join(result.projectPath, "package.json"), "utf8"),
+      ) as {
+        dependencies: Record<string, string>;
+        scripts: Record<string, string>;
+      };
+      const generatedFiles = new Set(
+        result.files.map((filePath) =>
+          path.relative(result.projectPath, filePath).replaceAll("\\", "/"),
+        ),
+      );
+
+      expect(generatedFiles).toContain(
+        language === "typescript" ? "src/app.ts" : "src/app.js",
+      );
+      expect(generatedFiles).toContain(
+        language === "typescript" ? "tsconfig.json" : "jsconfig.json",
+      );
+      expect(packageJson.scripts).toHaveProperty("test", "vitest run");
+      expect(packageJson.scripts).toHaveProperty("build");
+      if (language === "typescript") {
+        expect(packageJson.scripts).toHaveProperty("typecheck");
+        expect(generatedFiles).toContain("tests/auth.test.ts");
+      } else {
+        expect(packageJson.scripts).not.toHaveProperty("typecheck");
+        expect(generatedFiles).toContain("tests/auth.test.js");
+      }
+    },
+  );
+
+  it("generates a JavaScript MongoDB JWT backend without duplicate destinations", async () => {
+    const temporaryDirectory = await createTemporaryDirectory();
+    const templateRoot = path.resolve(
+      process.cwd(),
+      "src",
+      "templates",
+      "catalog",
+    );
+    const config = createValidProjectConfig({
+      backend: "express",
+      language: "javascript",
+      database: "mongodb",
+      authentication: "jwt",
+    });
+    const result = await generateProject(config, {
+      cwd: temporaryDirectory,
+      templateRoot,
+    });
+
+    expect(
+      result.files.filter(
+        (filePath) => path.basename(filePath) === "user-model.js",
+      ),
+    ).toHaveLength(1);
+    expect(result.files).toContain(
+      path.join(result.projectPath, "src", "config", "database.js"),
+    );
+  });
+
+  it("deep-merges JSON package overlays while preserving nested dependencies", async () => {
+    const temporaryDirectory = await createTemporaryDirectory();
+    const templateRoot = await createCatalog(temporaryDirectory, {
+      id: "shared-base",
+      description: "Composable JSON package files",
+      files: [
+        {
+          source: "package.json.tpl",
+          destination: "package.json",
+          template: true,
+          merge: "json",
+        },
+        {
+          source: "package.overlay.json.tpl",
+          destination: "package.json",
+          template: false,
+          merge: "json",
+        },
+      ],
+    });
+    const templateDirectory = path.join(templateRoot, "shared", "base");
+    await writeFile(
+      path.join(templateDirectory, "package.json.tpl"),
+      '{"name":"{{projectName}}","dependencies":{"express":"1"},"scripts":{"dev":"start"}}',
+    );
+    await writeFile(
+      path.join(templateDirectory, "package.overlay.json.tpl"),
+      '{"dependencies":{"mongoose":"2"},"scripts":{"test":"test"}}',
+    );
+    const config = createValidProjectConfig({ frontend: "react" });
+
+    const result = await generateProject(config, {
+      cwd: temporaryDirectory,
+      templateRoot,
+    });
+
+    expect(
+      result.files.filter(
+        (filePath) => path.basename(filePath) === "package.json",
+      ),
+    ).toHaveLength(1);
+    expect(
+      JSON.parse(
+        await readFile(path.join(result.projectPath, "package.json"), "utf8"),
+      ),
+    ).toEqual({
+      name: "my-app",
+      dependencies: { express: "1", mongoose: "2" },
+      scripts: { dev: "start", test: "test" },
+    });
+  });
+
+  it("composes React and Express as independent full-stack workspaces", async () => {
+    const temporaryDirectory = await createTemporaryDirectory();
+    const templateRoot = path.resolve(
+      process.cwd(),
+      "src",
+      "templates",
+      "catalog",
+    );
+    const config = createValidProjectConfig({
+      frontend: "react",
+      backend: "express",
+      database: "none",
+      authentication: "none",
+    });
+    const result = await generateProject(config, {
+      cwd: temporaryDirectory,
+      templateRoot,
+    });
+    const relativeFiles = result.files.map((filePath) =>
+      path.relative(result.projectPath, filePath).replaceAll("\\", "/"),
+    );
+    const rootPackage = JSON.parse(
+      await readFile(path.join(result.projectPath, "package.json"), "utf8"),
+    ) as {
+      name: string;
+      workspaces: string[];
+      scripts: Record<string, string>;
+    };
+    const frontendPackage = JSON.parse(
+      await readFile(
+        path.join(result.projectPath, "frontend", "package.json"),
+        "utf8",
+      ),
+    ) as { name: string };
+    const backendPackage = JSON.parse(
+      await readFile(
+        path.join(result.projectPath, "backend", "package.json"),
+        "utf8",
+      ),
+    ) as { name: string };
+
+    expect(rootPackage.workspaces).toEqual(["frontend", "backend"]);
+    expect(rootPackage.scripts).toHaveProperty("dev:frontend");
+    expect(rootPackage.scripts).toHaveProperty("dev:backend");
+    expect(
+      new Set([rootPackage.name, frontendPackage.name, backendPackage.name])
+        .size,
+    ).toBe(3);
+    expect(relativeFiles).toContain("frontend/src/main.tsx");
+    expect(relativeFiles).toContain("backend/src/server.ts");
+    expect(relativeFiles).toContain("frontend/.env.example");
+    expect(relativeFiles).toContain("backend/.env.example");
+    expect(relativeFiles).toContain("README.fullstack.md");
+  });
+
   it.each(["typescript", "javascript"] as const)(
     "generates a runnable React + Vite %s project layout",
     async (language) => {

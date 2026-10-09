@@ -113,6 +113,14 @@ export function validateProjectConfig(
     return "A database requires a backend. Choose a backend or select no database.";
   }
 
+  if (
+    config.backend === "express" &&
+    config.authentication === "jwt" &&
+    config.database === "none"
+  ) {
+    return "JWT authentication requires a persistent database. Choose PostgreSQL or MongoDB.";
+  }
+
   return undefined;
 }
 
