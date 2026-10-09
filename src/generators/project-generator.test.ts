@@ -254,6 +254,93 @@ describe("generateProject", () => {
     },
   );
 
+  it.each([
+    { database: "none", authentication: "none" },
+    { database: "postgres", authentication: "none" },
+    { database: "postgres", authentication: "jwt" },
+    { database: "mongodb", authentication: "none" },
+    { database: "mongodb", authentication: "jwt" },
+  ] as const)(
+    "generates NestJS $database with $authentication authentication",
+    async ({ database, authentication }) => {
+      const temporaryDirectory = await createTemporaryDirectory();
+      const templateRoot = path.resolve(
+        process.cwd(),
+        "src",
+        "templates",
+        "catalog",
+      );
+      const config = createValidProjectConfig({
+        backend: "nestjs",
+        database,
+        authentication,
+      });
+      const result = await generateProject(config, {
+        cwd: temporaryDirectory,
+        templateRoot,
+      });
+      const generatedFiles = new Set(
+        result.files.map((filePath) =>
+          path.relative(result.projectPath, filePath).replaceAll("\\", "/"),
+        ),
+      );
+      const packageJson = JSON.parse(
+        await readFile(path.join(result.projectPath, "package.json"), "utf8"),
+      ) as {
+        dependencies: Record<string, string>;
+        devDependencies: Record<string, string>;
+        scripts: Record<string, string>;
+      };
+      const environment = await readFile(
+        path.join(result.projectPath, ".env.example"),
+        "utf8",
+      );
+
+      expect(generatedFiles).toContain("src/main.ts");
+      expect(generatedFiles).toContain("src/app.module.ts");
+      expect(generatedFiles).toContain("test/app.controller.spec.ts");
+      expect(generatedFiles).toContain("README.backend.md");
+      expect(packageJson.dependencies).toHaveProperty("@nestjs/core");
+      expect(packageJson.dependencies).not.toHaveProperty("express");
+      expect(environment).toContain("PORT=3000");
+      expect(environment).not.toContain("{{");
+
+      if (database === "postgres") {
+        expect(packageJson.dependencies).toHaveProperty("@prisma/client");
+        expect(packageJson.devDependencies).toHaveProperty("prisma");
+        expect(generatedFiles).toContain("prisma/schema.prisma");
+        expect(generatedFiles).toContain("src/database/prisma.module.ts");
+        expect(environment).toContain("DATABASE_URL=postgresql://");
+      } else if (database === "mongodb") {
+        expect(packageJson.dependencies).toHaveProperty("@nestjs/mongoose");
+        expect(packageJson.dependencies).toHaveProperty("mongoose");
+        expect(generatedFiles).not.toContain("prisma/schema.prisma");
+        expect(environment).toContain("DATABASE_URL=mongodb://");
+      } else {
+        expect(packageJson.dependencies).not.toHaveProperty("mongoose");
+        expect(packageJson.dependencies).not.toHaveProperty("@prisma/client");
+        expect(environment).not.toContain("DATABASE_URL");
+      }
+
+      if (authentication === "jwt") {
+        expect(packageJson.dependencies).toHaveProperty("@nestjs/jwt");
+        expect(packageJson.dependencies).toHaveProperty("bcryptjs");
+        expect(packageJson.dependencies).toHaveProperty("passport-jwt");
+        expect(generatedFiles).toContain("src/auth/jwt.strategy.ts");
+        expect(generatedFiles).toContain("src/auth/jwt-auth.guard.ts");
+        expect(generatedFiles).toContain("src/auth/auth.module.ts");
+        expect(generatedFiles).toContain("src/users/user.module.ts");
+        expect(generatedFiles).toContain("test/auth.service.spec.ts");
+        expect(environment).toContain("JWT_SECRET=");
+      } else {
+        expect(packageJson.dependencies).not.toHaveProperty("@nestjs/jwt");
+        expect(generatedFiles).not.toContain("src/auth/auth.module.ts");
+        expect(generatedFiles).not.toContain("src/users/user.module.ts");
+        expect(environment).not.toContain("JWT_SECRET");
+      }
+    },
+  );
+
   it.each(["typescript", "javascript"] as const)(
     "generates an Express %s backend",
     async (language) => {

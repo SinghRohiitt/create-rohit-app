@@ -39,7 +39,7 @@ describe("resolveProjectConfig", () => {
       {
         frontend: "next",
         backend: "nestjs",
-        language: "javascript",
+        language: "typescript",
         database: "mongodb",
         authentication: "jwt",
         installDependencies: false,
@@ -51,7 +51,7 @@ describe("resolveProjectConfig", () => {
       projectType: "fullstack",
       frontend: "next",
       backend: "nestjs",
-      language: "javascript",
+      language: "typescript",
       database: "mongodb",
       authentication: "jwt",
       installDependencies: false,
@@ -113,6 +113,26 @@ describe("resolveProjectConfig", () => {
       resolveProjectConfig(
         "my-app",
         { backend: "express", database: "none", authentication: "jwt" },
+        createPrompts(),
+      ),
+    ).rejects.toThrow("JWT authentication requires a persistent database");
+  });
+
+  it("requires TypeScript for NestJS projects", async () => {
+    await expect(
+      resolveProjectConfig(
+        "my-app",
+        { backend: "nestjs", language: "javascript" },
+        createPrompts(),
+      ),
+    ).rejects.toThrow("NestJS projects currently require TypeScript");
+  });
+
+  it("requires a persistent database for NestJS JWT authentication", async () => {
+    await expect(
+      resolveProjectConfig(
+        "my-app",
+        { backend: "nestjs", authentication: "jwt" },
         createPrompts(),
       ),
     ).rejects.toThrow("JWT authentication requires a persistent database");

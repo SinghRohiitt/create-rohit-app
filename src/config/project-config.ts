@@ -113,8 +113,12 @@ export function validateProjectConfig(
     return "A database requires a backend. Choose a backend or select no database.";
   }
 
+  if (config.backend === "nestjs" && config.language !== "typescript") {
+    return "NestJS projects currently require TypeScript because its standard module and decorator architecture depends on TypeScript compilation.";
+  }
+
   if (
-    config.backend === "express" &&
+    (config.backend === "express" || config.backend === "nestjs") &&
     config.authentication === "jwt" &&
     config.database === "none"
   ) {
