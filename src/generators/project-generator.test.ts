@@ -152,6 +152,75 @@ describe("template renderer", () => {
 });
 
 describe("generateProject", () => {
+  it.each(["typescript", "javascript"] as const)(
+    "generates a runnable React + Vite %s project layout",
+    async (language) => {
+      const temporaryDirectory = await createTemporaryDirectory();
+      const templateRoot = path.resolve(
+        process.cwd(),
+        "src",
+        "templates",
+        "catalog",
+      );
+      const config = createValidProjectConfig({
+        frontend: "react",
+        language,
+        authentication: "jwt",
+      });
+
+      const result = await generateProject(config, {
+        cwd: temporaryDirectory,
+        templateRoot,
+      });
+      const generatedFiles = new Set(
+        result.files.map((filePath) =>
+          path.relative(result.projectPath, filePath).replaceAll("\\", "/"),
+        ),
+      );
+      const packageJson = JSON.parse(
+        await readFile(path.join(result.projectPath, "package.json"), "utf8"),
+      ) as {
+        dependencies: Record<string, string>;
+        devDependencies: Record<string, string>;
+        scripts: Record<string, string>;
+      };
+
+      expect(generatedFiles).toContain(
+        "src/App." + (language === "typescript" ? "tsx" : "jsx"),
+      );
+      expect(generatedFiles).toContain(
+        "src/main." + (language === "typescript" ? "tsx" : "jsx"),
+      );
+      expect(generatedFiles).toContain(
+        "src/services/api." + (language === "typescript" ? "ts" : "js"),
+      );
+      expect(generatedFiles).toContain(
+        "src/services/auth." + (language === "typescript" ? "ts" : "js"),
+      );
+      expect(generatedFiles).toContain(".env.example");
+      expect(generatedFiles).toContain("src/components/.gitkeep");
+      expect(generatedFiles).not.toContain(".env.auth.example");
+      expect(generatedFiles).toContain(
+        "src/services/auth." + (language === "typescript" ? "ts" : "js"),
+      );
+      expect(packageJson.dependencies).toHaveProperty("react");
+      expect(packageJson.dependencies).toHaveProperty("react-dom");
+      expect(packageJson.devDependencies).toHaveProperty("vite");
+      expect(packageJson.scripts).toHaveProperty("dev");
+      expect(packageJson.scripts).toHaveProperty("build");
+      expect(packageJson.scripts).toHaveProperty("lint");
+      if (language === "typescript") {
+        expect(packageJson.devDependencies).toHaveProperty("typescript");
+        expect(packageJson.scripts).toHaveProperty("typecheck");
+        expect(generatedFiles).toContain("tsconfig.json");
+      } else {
+        expect(packageJson.devDependencies).not.toHaveProperty("typescript");
+        expect(packageJson.scripts).not.toHaveProperty("typecheck");
+        expect(generatedFiles).not.toContain("tsconfig.json");
+      }
+    },
+  );
+
   it("generates template files and applies conditional files", async () => {
     const temporaryDirectory = await createTemporaryDirectory();
     const templateRoot = await createCatalog(temporaryDirectory, {

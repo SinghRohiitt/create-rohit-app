@@ -113,10 +113,6 @@ export function validateProjectConfig(
     return "A database requires a backend. Choose a backend or select no database.";
   }
 
-  if (config.projectType === "frontend" && config.authentication !== "none") {
-    return "Authentication requires a backend. Choose a backend or select no authentication.";
-  }
-
   return undefined;
 }
 

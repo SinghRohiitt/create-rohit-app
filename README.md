@@ -44,9 +44,14 @@ The generator discovers templates from the packaged catalog and composes all
 templates whose `appliesTo` selectors match the resolved configuration.
 Templates use a `template.json` manifest to map source files to safe relative
 destination paths, optionally render `{{projectConfigKey}}` variables, and
-conditionally include files with `when` selectors. The current catalog
-generates shared project documentation, a `.gitignore`, and example environment
-files. Framework-specific application templates are not included yet.
+conditionally include files with `when` selectors. The catalog includes the
+shared project files and a React + Vite frontend in JavaScript or TypeScript.
+
+The React application includes Vite, ESLint, a typed or JavaScript API service,
+environment configuration, and starter component/page/hook/store/lib/type/
+asset directories. Selecting JWT adds a client-side token session helper and
+Bearer-token API requests; it does not create or imply a backend or implement
+login endpoints. Access tokens remain in memory by default.
 
 Existing non-empty destination directories are never overwritten. Use
 `--dry-run` to print planned file paths without writing any files. Dependency

@@ -78,7 +78,7 @@ describe("resolveProjectConfig", () => {
     expect(prompts.selectProjectType).not.toHaveBeenCalled();
     expect(prompts.selectFrontend).not.toHaveBeenCalled();
     expect(prompts.selectDatabase).toHaveBeenCalledWith(false);
-    expect(prompts.selectAuthentication).toHaveBeenCalledWith(false);
+    expect(prompts.selectAuthentication).toHaveBeenCalledOnce();
   });
 
   it("configures backend-only projects without selecting a frontend", async () => {
@@ -94,7 +94,7 @@ describe("resolveProjectConfig", () => {
     expect(prompts.selectFrontend).not.toHaveBeenCalled();
   });
 
-  it("rejects database or authentication choices without a backend", async () => {
+  it("rejects database choices without a backend", async () => {
     const prompts = createPrompts();
 
     await expect(
@@ -106,6 +106,19 @@ describe("resolveProjectConfig", () => {
     ).rejects.toThrow(ProjectConfigurationError);
 
     expect(prompts.selectLanguage).not.toHaveBeenCalled();
+  });
+
+  it("allows frontend-only JWT configuration without inventing a backend", async () => {
+    const prompts = createPrompts();
+    const config = await resolveProjectConfig(
+      "my-app",
+      { frontend: "react", authentication: "jwt" },
+      prompts,
+    );
+
+    expect(config.projectType).toBe("frontend");
+    expect(config.backend).toBe("none");
+    expect(config.authentication).toBe("jwt");
   });
 
   it("restricts project types to those that support explicitly requested backend features", async () => {

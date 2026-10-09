@@ -64,15 +64,13 @@ export const configurationPrompts: ProjectConfigPrompts = {
         : [{ name: "None", value: "none" }],
       default: "none",
     }),
-  selectAuthentication: (allowAuthentication) =>
+  selectAuthentication: () =>
     select<Authentication>({
       message: "Authentication?",
-      choices: allowAuthentication
-        ? [
-            { name: "JWT", value: "jwt" },
-            { name: "None", value: "none" },
-          ]
-        : [{ name: "None", value: "none" }],
+      choices: [
+        { name: "JWT", value: "jwt" },
+        { name: "None", value: "none" },
+      ],
       default: "none",
     }),
   confirmInstallDependencies: () =>

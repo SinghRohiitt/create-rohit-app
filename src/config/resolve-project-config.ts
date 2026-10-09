@@ -19,7 +19,7 @@ export interface ProjectConfigPrompts {
   selectBackend(): Promise<Exclude<Backend, "none">>;
   selectLanguage(): Promise<Language>;
   selectDatabase(allowDatabase: boolean): Promise<Database>;
-  selectAuthentication(allowAuthentication: boolean): Promise<Authentication>;
+  selectAuthentication(): Promise<Authentication>;
   confirmInstallDependencies(): Promise<boolean>;
 }
 
@@ -48,16 +48,13 @@ export async function resolveProjectConfig(
 
   let projectType: Exclude<ProjectType, "empty">;
   const requireBackend =
-    (options.database !== undefined && options.database !== "none") ||
-    (options.authentication !== undefined && options.authentication !== "none");
+    options.database !== undefined && options.database !== "none";
 
   if (options.frontend && options.backend) {
     projectType = "fullstack";
   } else if (options.frontend) {
     if (requireBackend) {
-      throw new ProjectConfigurationError(
-        "A database or authentication strategy requires a backend.",
-      );
+      throw new ProjectConfigurationError("A database requires a backend.");
     }
     projectType = "frontend";
   } else if (options.backend) {
@@ -90,19 +87,9 @@ export async function resolveProjectConfig(
       "A database requires a backend. Choose a backend or select no database.",
     );
   }
-  if (
-    !hasBackend &&
-    options.authentication !== undefined &&
-    options.authentication !== "none"
-  ) {
-    throw new ProjectConfigurationError(
-      "Authentication requires a backend. Choose a backend or select no authentication.",
-    );
-  }
-
   options.language ??= await prompts.selectLanguage();
   options.database ??= await prompts.selectDatabase(hasBackend);
-  options.authentication ??= await prompts.selectAuthentication(hasBackend);
+  options.authentication ??= await prompts.selectAuthentication();
   options.installDependencies ??= await prompts.confirmInstallDependencies();
 
   const config = createProjectConfig(projectName, options);

@@ -11,11 +11,11 @@ export interface TemplateFile {
   readonly source: string;
   readonly destination: string;
   readonly template?: boolean;
-  readonly when?: TemplateCondition;
+  readonly when?: TemplateCondition | readonly TemplateCondition[];
 }
 
 export type TemplateSelector = Partial<
-  Pick<ProjectConfig, "projectType" | "frontend" | "backend">
+  Pick<ProjectConfig, "projectType" | "frontend" | "backend" | "language">
 >;
 
 export interface TemplateManifest {

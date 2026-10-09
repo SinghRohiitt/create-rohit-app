@@ -18,6 +18,7 @@
     "build": "tsup src/index.ts --format esm --platform node --target node20 --out-dir dist --clean && node scripts/copy-templates.mjs",
     "dev": "tsx src/index.ts",
     "test": "vitest run",
+    "test:templates": "npm run build && node scripts/smoke-generated-templates.mjs",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "npm run build"

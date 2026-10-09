@@ -29,6 +29,7 @@ const selectorValues = {
   projectType: new Set(["frontend", "backend", "fullstack"]),
   frontend: new Set(["react", "next", "none"]),
   backend: new Set(["express", "nestjs", "none"]),
+  language: new Set(["typescript", "javascript"]),
 } as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -107,7 +108,11 @@ function parseFile(
     ...(value.template === undefined ? {} : { template: value.template }),
     ...(value.when === undefined
       ? {}
-      : { when: parseCondition(value.when, context) }),
+      : {
+          when: Array.isArray(value.when)
+            ? value.when.map((condition) => parseCondition(condition, context))
+            : parseCondition(value.when, context),
+        }),
   };
 }
 
@@ -139,11 +144,17 @@ function parseManifest(value: unknown, manifestPath: string): TemplateManifest {
       );
     }
 
-    const allowedKeys = ["projectType", "frontend", "backend"] as const;
+    const allowedKeys = [
+      "projectType",
+      "frontend",
+      "backend",
+      "language",
+    ] as const;
     const selectors: {
       projectType?: ProjectConfig["projectType"];
       frontend?: ProjectConfig["frontend"];
       backend?: ProjectConfig["backend"];
+      language?: ProjectConfig["language"];
     } = {};
     for (const key of Object.keys(value.appliesTo)) {
       if (!allowedKeys.includes(key as (typeof allowedKeys)[number])) {
@@ -179,6 +190,13 @@ function parseManifest(value: unknown, manifestPath: string): TemplateManifest {
           );
         }
         selectors.backend = selectorValue as ProjectConfig["backend"];
+      } else if (key === "language") {
+        if (!selectorValues.language.has(selectorValue)) {
+          throw new InvalidTemplateError(
+            `Template "${id}": invalid language selector "${selectorValue}".`,
+          );
+        }
+        selectors.language = selectorValue as ProjectConfig["language"];
       }
     }
     appliesTo = selectors;
@@ -293,10 +311,22 @@ export function selectTemplates(
 }
 
 export function conditionMatches(
-  condition: TemplateCondition | undefined,
+  condition: TemplateFile["when"],
   config: ProjectConfig,
 ): boolean {
-  return condition === undefined || config[condition.key] === condition.equals;
+  if (condition === undefined) {
+    return true;
+  }
+  if (isConditionArray(condition)) {
+    return condition.every((item) => config[item.key] === item.equals);
+  }
+  return config[condition.key] === condition.equals;
+}
+
+function isConditionArray(
+  condition: NonNullable<TemplateFile["when"]>,
+): condition is readonly TemplateCondition[] {
+  return Array.isArray(condition);
 }
 
 export async function resolveTemplateSource(
