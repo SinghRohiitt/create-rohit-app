@@ -17,7 +17,10 @@
   "scripts": {
     "build": "tsup src/index.ts --format esm --platform node --target node20 --out-dir dist --clean && node scripts/copy-templates.mjs",
     "dev": "tsx src/index.ts",
-    "test": "vitest run",
+    "test": "npm run test:unit && npm run test:generator",
+    "test:unit": "vitest run src/cli src/config",
+    "test:generator": "vitest run src/generators",
+    "test:integration": "npm run build && node scripts/test-generated-projects.mjs",
     "test:templates": "npm run build && node scripts/smoke-generated-templates.mjs",
     "test:backend-templates": "npm run build && node scripts/smoke-generated-templates.mjs --backend-only",
     "test:nestjs-templates": "npm run build && node scripts/smoke-generated-templates.mjs --nestjs-only",

@@ -102,10 +102,30 @@ npm install
 npm run dev -- my-app
 npm run typecheck
 npm run lint
+npm run test:unit
+npm run test:generator
 npm test
 npm run build
-npm run test:templates
-npm run test:backend-templates
-npm run test:nestjs-templates
-npm run test:fullstack-templates
+npm run test:integration
 ```
+
+Tests are separated by cost and purpose:
+
+- `npm run test:unit` runs CLI and configuration unit tests.
+- `npm run test:generator` runs template resolver, renderer, and filesystem
+  generator tests. These are local tests and do not install generated-project
+  dependencies.
+- `npm test` runs both fast suites; it does not run network-heavy generated
+  project checks.
+- `npm run test:integration` builds the CLI, generates six representative
+  projects in a temporary directory, verifies files and dependency metadata,
+  installs each generated project's dependencies, runs available typecheck and
+  test scripts, and builds each project. The temporary directory is removed
+  when the run exits.
+
+The generated-project matrix includes React + TypeScript, Next.js + TypeScript,
+Express + TypeScript, Express + PostgreSQL + JWT, NestJS + MongoDB + JWT, and
+React + Express + PostgreSQL + JWT. It requires network access for npm installs
+and is intentionally opt-in. Run the broader legacy template matrix only when
+needed with `npm run test:templates`, `npm run test:backend-templates`,
+`npm run test:nestjs-templates`, or `npm run test:fullstack-templates`.
