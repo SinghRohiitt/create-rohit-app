@@ -38,21 +38,24 @@ function hasFlag(args: readonly string[], flag: string): boolean {
 }
 
 function assertNoConflictingRepeatedOptions(args: readonly string[]): void {
-  if (
-    hasFlag(args, "--install-dependencies") &&
-    hasFlag(args, "--no-install")
-  ) {
+  const skipsInstall =
+    hasFlag(args, "--skip-install") || hasFlag(args, "--no-install");
+  if (hasFlag(args, "--install-dependencies") && skipsInstall) {
     throw new CliArgumentError(
-      "Use either --install-dependencies or --no-install, not both.",
+      "Use either --install-dependencies or --skip-install, not both.",
     );
   }
 
   const valueOptions = new Map<string, string>();
   const valueOptionNames = new Set([
     "--frontend",
+    "-f",
     "--backend",
+    "-b",
     "--database",
+    "-d",
     "--auth",
+    "-a",
     "--package-manager",
   ]);
 
@@ -72,17 +75,39 @@ function assertNoConflictingRepeatedOptions(args: readonly string[]): void {
       continue;
     }
 
-    const previousValue = valueOptions.get(optionName ?? "");
+    const canonicalOption =
+      optionName === "-f"
+        ? "--frontend"
+        : optionName === "-b"
+          ? "--backend"
+          : optionName === "-d"
+            ? "--database"
+            : optionName === "-a"
+              ? "--auth"
+              : optionName;
+    const previousValue = valueOptions.get(canonicalOption ?? "");
     if (previousValue && previousValue !== value) {
       throw new CliArgumentError(
-        `Conflicting values for ${optionName}: "${previousValue}" and "${value}".`,
+        `Conflicting values for ${canonicalOption}: "${previousValue}" and "${value}".`,
       );
     }
 
-    valueOptions.set(optionName ?? "", value);
+    valueOptions.set(canonicalOption ?? "", value);
     if (inlineValue === undefined) {
       index += 1;
     }
+  }
+}
+
+function assertNoConflictingLanguageOptions(args: readonly string[]): void {
+  const requestsTypeScript =
+    hasFlag(args, "--typescript") || hasFlag(args, "--ts");
+  const requestsJavaScript =
+    hasFlag(args, "--javascript") || hasFlag(args, "--js");
+  if (requestsTypeScript && requestsJavaScript) {
+    throw new CliArgumentError(
+      "Use either --typescript/--ts or --javascript/--js, not both.",
+    );
   }
 }
 
@@ -91,6 +116,7 @@ function createProgram(
   onRequest: (request: ParsedProjectRequest) => void | Promise<void>,
 ): Command {
   assertNoConflictingRepeatedOptions(args);
+  assertNoConflictingLanguageOptions(args);
   const program = new Command();
 
   program
@@ -99,26 +125,26 @@ function createProgram(
     .version(packageConfig.version)
     .argument("<project-name>", "name of the project to create")
     .addOption(
-      new Option("--frontend <framework>", "frontend framework").choices(
+      new Option("-f, --frontend <framework>", "frontend framework").choices(
         frontends,
       ),
     )
     .addOption(
-      new Option("--backend <framework>", "backend framework").choices(
+      new Option("-b, --backend <framework>", "backend framework").choices(
         backends,
       ),
     )
-    .addOption(
-      new Option("--typescript", "use TypeScript").conflicts("javascript"),
-    )
+    .option("--typescript", "use TypeScript")
     .option("--javascript", "use JavaScript")
+    .option("--ts", "alias for --typescript")
+    .option("--js", "alias for --javascript")
     .addOption(
-      new Option("--database <database>", "database to configure").choices(
+      new Option("-d, --database <database>", "database to configure").choices(
         databases,
       ),
     )
     .addOption(
-      new Option("--auth <strategy>", "authentication strategy").choices(
+      new Option("-a, --auth <strategy>", "authentication strategy").choices(
         authenticationStrategies,
       ),
     )
@@ -128,10 +154,16 @@ function createProgram(
       ]),
     )
     .option("--install-dependencies", "install dependencies")
+    .option("--skip-install", "skip dependency installation")
     .option("--no-install", "skip dependency installation")
+    .option("--skip-git", "skip Git initialization")
     .option("--no-git", "skip Git initialization")
+    .option("-y, --yes", "accept defaults and run without prompts")
+    .option("--debug", "show diagnostic stack traces on errors")
     .option("--dry-run", "show planned output without writing files")
     .action((projectName: string, commandOptions: Record<string, unknown>) => {
+      const skipsInstall =
+        hasFlag(args, "--skip-install") || hasFlag(args, "--no-install");
       const options: ProjectConfigOptions = {
         ...(isOneOf(commandOptions.frontend, frontends)
           ? { frontend: commandOptions.frontend }
@@ -139,9 +171,9 @@ function createProgram(
         ...(isOneOf(commandOptions.backend, backends)
           ? { backend: commandOptions.backend }
           : {}),
-        ...(commandOptions.javascript === true
+        ...(hasFlag(args, "--javascript") || hasFlag(args, "--js")
           ? { language: "javascript" as const }
-          : commandOptions.typescript === true
+          : hasFlag(args, "--typescript") || hasFlag(args, "--ts")
             ? { language: "typescript" as const }
             : {}),
         ...(isOneOf(commandOptions.database, databases)
@@ -155,10 +187,12 @@ function createProgram(
           : {}),
         ...(hasFlag(args, "--install-dependencies")
           ? { installDependencies: true }
-          : hasFlag(args, "--no-install")
+          : skipsInstall
             ? { installDependencies: false }
             : {}),
-        ...(hasFlag(args, "--no-git") ? { initializeGit: false } : {}),
+        ...(hasFlag(args, "--no-git") || hasFlag(args, "--skip-git")
+          ? { initializeGit: false }
+          : {}),
       };
 
       let config: ProjectConfigDraft;
@@ -174,10 +208,23 @@ function createProgram(
         config,
         providedOptions: options,
         dryRun: hasFlag(args, "--dry-run"),
+        yes: commandOptions.yes === true,
+        debug: commandOptions.debug === true,
       });
     });
 
   return program;
+}
+
+export function hasCompleteProjectSelections(
+  options: ProjectConfigOptions,
+): boolean {
+  return (
+    (options.frontend !== undefined || options.backend !== undefined) &&
+    options.language !== undefined &&
+    options.database !== undefined &&
+    options.authentication !== undefined
+  );
 }
 
 export function createCliProgram(
@@ -216,5 +263,7 @@ export function parseCliArgs(args: readonly string[]): ParsedProjectRequest {
     ...request,
     mode: hasExplicitOptions(args) ? "cli" : "interactive",
     dryRun: hasFlag(args, "--dry-run"),
+    yes: hasFlag(args, "--yes") || hasFlag(args, "-y"),
+    debug: hasFlag(args, "--debug"),
   };
 }

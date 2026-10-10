@@ -63,13 +63,15 @@ describe("parseCliArgs", () => {
         authentication: "jwt",
       },
       dryRun: false,
+      yes: false,
+      debug: false,
     });
   });
 
   it("rejects conflicting language flags", () => {
     expect(() =>
       parseCliArgs(["my-app", "--typescript", "--javascript"]),
-    ).toThrow(/cannot be used with option/i);
+    ).toThrow(/either --typescript\/--ts or --javascript\/--js/i);
   });
 
   it("rejects conflicting values for a repeated option", () => {
@@ -95,12 +97,45 @@ describe("parseCliArgs", () => {
       },
       providedOptions: {},
       dryRun: false,
+      yes: false,
+      debug: false,
     });
   });
 
   it("supports disabling installation and Git initialization", () => {
     const parsed = parseCliArgs(["my-app", "--no-install", "--no-git"]);
 
+    expect(parsed.config.installDependencies).toBe(false);
+    expect(parsed.config.initializeGit).toBe(false);
+  });
+
+  it("supports aliases for framework, language, database, auth, and skip flags", () => {
+    const parsed = parseCliArgs([
+      "my-app",
+      "-f",
+      "react",
+      "-b",
+      "express",
+      "--ts",
+      "-d",
+      "none",
+      "-a",
+      "none",
+      "--skip-install",
+      "--skip-git",
+      "-y",
+    ]);
+
+    expect(parsed.providedOptions).toMatchObject({
+      frontend: "react",
+      backend: "express",
+      language: "typescript",
+      database: "none",
+      authentication: "none",
+      installDependencies: false,
+      initializeGit: false,
+    });
+    expect(parsed.yes).toBe(true);
     expect(parsed.config.installDependencies).toBe(false);
     expect(parsed.config.initializeGit).toBe(false);
   });
@@ -118,7 +153,13 @@ describe("parseCliArgs", () => {
   it("rejects conflicting dependency installation flags", () => {
     expect(() =>
       parseCliArgs(["my-app", "--install-dependencies", "--no-install"]),
-    ).toThrow(/either --install-dependencies or --no-install/i);
+    ).toThrow(/either --install-dependencies or --skip-install/i);
+  });
+
+  it("rejects conflicting install aliases", () => {
+    expect(() =>
+      parseCliArgs(["my-app", "--install-dependencies", "--skip-install"]),
+    ).toThrow(/either --install-dependencies or --skip-install/i);
   });
 
   it("rejects unknown options", () => {

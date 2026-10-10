@@ -30,6 +30,8 @@ export interface ParsedProjectRequest {
   readonly config: ProjectConfigDraft;
   readonly providedOptions: ProjectConfigOptions;
   readonly dryRun: boolean;
+  readonly yes: boolean;
+  readonly debug: boolean;
 }
 
 export interface ProjectConfigOptions {

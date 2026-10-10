@@ -23,6 +23,10 @@ export interface ProjectConfigPrompts {
   confirmInstallDependencies(): Promise<boolean>;
 }
 
+export interface ResolveProjectConfigOptions {
+  readonly useDefaults?: boolean;
+}
+
 export class ProjectConfigurationError extends Error {
   constructor(message: string) {
     super(message);
@@ -34,6 +38,7 @@ export async function resolveProjectConfig(
   projectName: string,
   providedOptions: ProjectConfigOptions,
   prompts: ProjectConfigPrompts,
+  resolveOptions: ResolveProjectConfigOptions = {},
 ): Promise<ProjectConfig> {
   const options: {
     frontend?: Exclude<Frontend, "none">;
@@ -49,6 +54,7 @@ export async function resolveProjectConfig(
   let projectType: Exclude<ProjectType, "empty">;
   const requireBackend =
     options.database !== undefined && options.database !== "none";
+  const useDefaults = resolveOptions.useDefaults ?? false;
 
   if (options.frontend && options.backend) {
     projectType = "fullstack";
@@ -59,6 +65,8 @@ export async function resolveProjectConfig(
     projectType = "frontend";
   } else if (options.backend) {
     projectType = "backend";
+  } else if (useDefaults) {
+    projectType = "fullstack";
   } else {
     projectType = await prompts.selectProjectType(requireBackend);
   }
@@ -67,14 +75,14 @@ export async function resolveProjectConfig(
     (projectType === "frontend" || projectType === "fullstack") &&
     options.frontend === undefined
   ) {
-    options.frontend = await prompts.selectFrontend();
+    options.frontend = useDefaults ? "react" : await prompts.selectFrontend();
   }
 
   if (
     (projectType === "backend" || projectType === "fullstack") &&
     options.backend === undefined
   ) {
-    options.backend = await prompts.selectBackend();
+    options.backend = useDefaults ? "express" : await prompts.selectBackend();
   }
 
   const hasBackend = projectType === "backend" || projectType === "fullstack";
@@ -87,10 +95,18 @@ export async function resolveProjectConfig(
       "A database requires a backend. Choose a backend or select no database.",
     );
   }
-  options.language ??= await prompts.selectLanguage();
-  options.database ??= await prompts.selectDatabase(hasBackend);
-  options.authentication ??= await prompts.selectAuthentication();
-  options.installDependencies ??= await prompts.confirmInstallDependencies();
+  options.language ??= useDefaults
+    ? "typescript"
+    : await prompts.selectLanguage();
+  options.database ??= useDefaults
+    ? "none"
+    : await prompts.selectDatabase(hasBackend);
+  options.authentication ??= useDefaults
+    ? "none"
+    : await prompts.selectAuthentication();
+  options.installDependencies ??= useDefaults
+    ? true
+    : await prompts.confirmInstallDependencies();
 
   const config = createProjectConfig(projectName, options);
   const configError = validateProjectConfig(config);

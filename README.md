@@ -11,7 +11,8 @@ npx create-rohit-app my-app \
   --backend express \
   --typescript \
   --database postgres \
-  --auth jwt
+  --auth jwt \
+  --yes
 ```
 
 With only a project name, the CLI starts an interactive configuration flow.
@@ -24,8 +25,11 @@ backend or implement login endpoints.
 
 CLI options override corresponding prompt answers, and those questions are
 skipped. Framework flags imply project type: providing both frameworks selects
-Full Stack; a frontend or backend flag alone selects that project type. For
-example:
+Full Stack; a frontend or backend flag alone selects that project type. A
+complete set of framework, language, database, and auth choices runs without
+prompts; dependency installation and Git initialization are enabled by default.
+Use `--yes` (or `-y`) to accept the prompt defaults in non-interactive use.
+For example:
 
 ```sh
 npx create-rohit-app my-app \
@@ -34,12 +38,17 @@ npx create-rohit-app my-app \
   --typescript \
   --database postgres \
   --auth jwt \
-  --install-dependencies
+  --yes
 ```
 
-Use `--javascript`, `--database none`, `--auth none`, `--no-install`, or
-`--dry-run` for explicit alternatives. If prompts are still needed, run the CLI
-in a terminal with interactive input.
+Framework, database, and auth options accept short aliases: `-f`, `-b`, `-d`,
+and `-a`. Use `--ts`/`--js` as language aliases. Use `--javascript`,
+`--database none`, or `--auth none` for explicit alternatives. Pass
+`--skip-install` (alias `--no-install`) or `--skip-git` (alias `--no-git`) to
+disable either step, and `--package-manager npm|pnpm|yarn` to select the
+installer. If prompts are still needed, run the CLI in a terminal with
+interactive input. In a non-interactive terminal, provide all configuration
+choices or use `--yes`.
 
 The generator discovers templates from the packaged catalog and composes all
 templates whose `appliesTo` selectors match the resolved configuration.
@@ -74,9 +83,12 @@ backend JWT authentication. Logout is stateless: clients discard their access
 token, which expires after 15 minutes.
 
 Existing non-empty destination directories are never overwritten. Use
-`--dry-run` to print planned file paths without writing any files. Dependency
-installation and Git initialization are configuration options but are not
-executed by this release.
+`--dry-run` to print planned file paths without writing any files. After
+generation, the CLI installs dependencies using the selected package manager
+and initializes Git unless skipped. A failure in either post-generation step
+is reported with the created project path and a retry command. The success
+summary prints only the development URLs configured by the selected
+frameworks.
 
 Use `--help` to list available options and `--version` to print the CLI version.
 Project names must be lowercase and contain only letters, numbers, dots,

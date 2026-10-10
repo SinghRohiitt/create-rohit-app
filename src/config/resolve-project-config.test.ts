@@ -175,4 +175,27 @@ describe("resolveProjectConfig", () => {
       initializeGit: true,
     });
   });
+
+  it("uses matching defaults without invoking prompts in non-interactive mode", async () => {
+    const prompts = createPrompts();
+    const config = await resolveProjectConfig("my-app", {}, prompts, {
+      useDefaults: true,
+    });
+
+    expect(config).toEqual({
+      projectName: "my-app",
+      projectType: "fullstack",
+      frontend: "react",
+      backend: "express",
+      language: "typescript",
+      database: "none",
+      authentication: "none",
+      packageManager: "npm",
+      installDependencies: true,
+      initializeGit: true,
+    });
+    for (const prompt of Object.values(prompts)) {
+      expect(prompt).not.toHaveBeenCalled();
+    }
+  });
 });
