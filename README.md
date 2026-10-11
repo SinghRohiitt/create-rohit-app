@@ -2,6 +2,11 @@
 
 A command-line tool for scaffolding configurable full-stack applications.
 
+## Requirements
+
+Node.js `>=20.19.0` and npm are required. Generated applications may have
+additional runtime requirements documented in their generated README files.
+
 ## Usage
 
 ```sh
@@ -129,3 +134,7 @@ React + Express + PostgreSQL + JWT. It requires network access for npm installs
 and is intentionally opt-in. Run the broader legacy template matrix only when
 needed with `npm run test:templates`, `npm run test:backend-templates`,
 `npm run test:nestjs-templates`, or `npm run test:fullstack-templates`.
+
+## License
+
+[MIT](./LICENSE) © 2026 Rohit Singh.

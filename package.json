@@ -2,14 +2,25 @@
   "name": "create-rohit-app",
   "version": "0.1.0",
   "description": "A CLI for scaffolding configurable full-stack applications.",
+  "author": "Rohit Singh",
+  "license": "MIT",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SinghRohiitt/create-rohit-app.git"
+  },
+  "bugs": {
+    "url": "https://github.com/SinghRohiitt/create-rohit-app/issues"
+  },
+  "homepage": "https://github.com/SinghRohiitt/create-rohit-app#readme",
   "bin": {
     "create-rohit-app": "./dist/index.js"
   },
   "files": [
     "dist",
     "templates",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "engines": {
     "node": ">=20.19.0"
@@ -27,12 +38,18 @@
     "test:fullstack-templates": "npm run build && node scripts/smoke-generated-templates.mjs --fullstack-only",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "prepublishOnly": "npm run build"
+    "prepack": "npm run build"
   },
   "keywords": [
     "cli",
+    "create-app",
     "scaffolding",
     "full-stack",
+    "react",
+    "vite",
+    "nextjs",
+    "express",
+    "nestjs",
     "typescript"
   ],
   "dependencies": {
