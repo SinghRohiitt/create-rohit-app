@@ -111,7 +111,7 @@ function buildNonInteractiveError(): string {
   return [
     "Interactive configuration requires a terminal.",
     "Run with --yes to accept the defaults, or provide the framework, language, database, and auth options.",
-    "Example: create-rohit-app my-app --frontend react --backend express --typescript --database none --auth none",
+    "Example: create-rohitsingh0408-app my-app --frontend react --backend express --typescript --database none --auth none",
   ].join("\n");
 }
 

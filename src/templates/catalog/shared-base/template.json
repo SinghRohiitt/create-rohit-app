@@ -1,0 +1,24 @@
+{
+  "id": "shared-base",
+  "description": "Shared project metadata and developer files.",
+  "order": 0,
+  "files": [
+    {
+      "source": "README.md.tpl",
+      "destination": "README.md",
+      "template": true,
+      "when": { "key": "projectType", "equals": "frontend" }
+    },
+    {
+      "source": "README.md.tpl",
+      "destination": "README.md",
+      "template": true,
+      "when": { "key": "projectType", "equals": "backend" }
+    },
+    {
+      "source": "gitignore.tpl",
+      "destination": ".gitignore",
+      "template": false
+    }
+  ]
+}

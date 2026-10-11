@@ -1,5 +1,5 @@
 {
-  "name": "create-rohit-app",
+  "name": "create-rohitsingh0408-app",
   "version": "0.1.0",
   "description": "A CLI for scaffolding configurable full-stack applications.",
   "author": "Rohit Singh",
@@ -7,14 +7,14 @@
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/SinghRohiitt/create-rohit-app.git"
+    "url": "git+https://github.com/SinghRohiitt/create-rohitsingh0408-app.git"
   },
   "bugs": {
-    "url": "https://github.com/SinghRohiitt/create-rohit-app/issues"
+    "url": "https://github.com/SinghRohiitt/create-rohitsingh0408-app/issues"
   },
-  "homepage": "https://github.com/SinghRohiitt/create-rohit-app#readme",
+  "homepage": "https://github.com/SinghRohiitt/create-rohitsingh0408-app#readme",
   "bin": {
-    "create-rohit-app": "./dist/index.js"
+    "create-rohitsingh0408-app": "dist/index.js"
   },
   "files": [
     "dist",

@@ -1,0 +1,45 @@
+{
+  "id": "react-vite",
+  "description": "React application built with Vite.",
+  "appliesTo": {
+    "frontend": "react"
+  },
+  "destinationPrefixByProjectType": {
+    "fullstack": "frontend"
+  },
+  "order": 10,
+  "files": [
+    { "source": "package.json.tpl", "destination": "package.json", "template": true, "when": { "key": "language", "equals": "typescript" } },
+    { "source": "package.javascript.json.tpl", "destination": "package.json", "template": true, "when": { "key": "language", "equals": "javascript" } },
+    { "source": "index.typescript.html.tpl", "destination": "index.html", "template": true, "when": { "key": "language", "equals": "typescript" } },
+    { "source": "index.javascript.html.tpl", "destination": "index.html", "template": true, "when": { "key": "language", "equals": "javascript" } },
+    { "source": "vite.config.ts.tpl", "destination": "vite.config.ts", "template": false },
+    { "source": "tsconfig.json.tpl", "destination": "tsconfig.json", "template": false, "when": { "key": "language", "equals": "typescript" } },
+    { "source": "tsconfig.app.json.tpl", "destination": "tsconfig.app.json", "template": false, "when": { "key": "language", "equals": "typescript" } },
+    { "source": "tsconfig.node.json.tpl", "destination": "tsconfig.node.json", "template": false, "when": { "key": "language", "equals": "typescript" } },
+    { "source": "eslint.config.js.tpl", "destination": "eslint.config.js", "template": false, "when": { "key": "language", "equals": "typescript" } },
+    { "source": "eslint.javascript.config.js.tpl", "destination": "eslint.config.js", "template": false, "when": { "key": "language", "equals": "javascript" } },
+    { "source": "vite-env.d.ts.tpl", "destination": "src/vite-env.d.ts", "template": false, "when": { "key": "language", "equals": "typescript" } },
+    { "source": "main.tsx.tpl", "destination": "src/main.tsx", "template": false, "when": { "key": "language", "equals": "typescript" } },
+    { "source": "main.jsx.tpl", "destination": "src/main.jsx", "template": false, "when": { "key": "language", "equals": "javascript" } },
+    { "source": "App.tsx.tpl", "destination": "src/App.tsx", "template": true, "when": { "key": "language", "equals": "typescript" } },
+    { "source": "App.jsx.tpl", "destination": "src/App.jsx", "template": true, "when": { "key": "language", "equals": "javascript" } },
+    { "source": "styles.css.tpl", "destination": "src/styles.css", "template": false },
+    { "source": "api.ts.tpl", "destination": "src/services/api.ts", "template": false, "when": [{ "key": "language", "equals": "typescript" }, { "key": "authentication", "equals": "none" }] },
+    { "source": "api.auth.ts.tpl", "destination": "src/services/api.ts", "template": false, "when": [{ "key": "language", "equals": "typescript" }, { "key": "authentication", "equals": "jwt" }] },
+    { "source": "api.js.tpl", "destination": "src/services/api.js", "template": false, "when": [{ "key": "language", "equals": "javascript" }, { "key": "authentication", "equals": "none" }] },
+    { "source": "api.auth.js.tpl", "destination": "src/services/api.js", "template": false, "when": [{ "key": "language", "equals": "javascript" }, { "key": "authentication", "equals": "jwt" }] },
+    { "source": "auth.ts.tpl", "destination": "src/services/auth.ts", "template": false, "when": [{ "key": "authentication", "equals": "jwt" }, { "key": "language", "equals": "typescript" }] },
+    { "source": "auth.js.tpl", "destination": "src/services/auth.js", "template": false, "when": [{ "key": "authentication", "equals": "jwt" }, { "key": "language", "equals": "javascript" }] },
+    { "source": "auth.types.ts.tpl", "destination": "src/types/auth.ts", "template": false, "when": [{ "key": "authentication", "equals": "jwt" }, { "key": "language", "equals": "typescript" }] },
+    { "source": "frontend.env.example.tpl", "destination": ".env.example", "template": true },
+    { "source": "component.gitkeep", "destination": "src/components/.gitkeep", "template": false },
+    { "source": "pages.gitkeep", "destination": "src/pages/.gitkeep", "template": false },
+    { "source": "hooks.gitkeep", "destination": "src/hooks/.gitkeep", "template": false },
+    { "source": "store.gitkeep", "destination": "src/store/.gitkeep", "template": false },
+    { "source": "lib.gitkeep", "destination": "src/lib/.gitkeep", "template": false },
+    { "source": "types.gitkeep", "destination": "src/types/.gitkeep", "template": false },
+    { "source": "assets.gitkeep", "destination": "src/assets/.gitkeep", "template": false },
+    { "source": "scaffold.test.mjs.tpl", "destination": "tests/scaffold.test.mjs", "template": false }
+  ]
+}

@@ -1,0 +1,141 @@
+{
+  "id": "nextjs",
+  "description": "Next.js App Router frontend.",
+  "appliesTo": {
+    "frontend": "next"
+  },
+  "destinationPrefixByProjectType": {
+    "fullstack": "frontend"
+  },
+  "order": 10,
+  "files": [
+    {
+      "source": "package.typescript.json.tpl",
+      "destination": "package.json",
+      "template": true,
+      "when": { "key": "language", "equals": "typescript" }
+    },
+    {
+      "source": "package.javascript.json.tpl",
+      "destination": "package.json",
+      "template": true,
+      "when": { "key": "language", "equals": "javascript" }
+    },
+    {
+      "source": "next.config.mjs.tpl",
+      "destination": "next.config.mjs",
+      "template": false
+    },
+    {
+      "source": "eslint.config.mjs.tpl",
+      "destination": "eslint.config.mjs",
+      "template": false
+    },
+    {
+      "source": "tsconfig.json.tpl",
+      "destination": "tsconfig.json",
+      "template": false,
+      "when": { "key": "language", "equals": "typescript" }
+    },
+    {
+      "source": "next-env.d.ts.tpl",
+      "destination": "next-env.d.ts",
+      "template": false,
+      "when": { "key": "language", "equals": "typescript" }
+    },
+    {
+      "source": "jsconfig.json.tpl",
+      "destination": "jsconfig.json",
+      "template": false,
+      "when": { "key": "language", "equals": "javascript" }
+    },
+    {
+      "source": "layout.tsx.tpl",
+      "destination": "app/layout.tsx",
+      "template": true,
+      "when": { "key": "language", "equals": "typescript" }
+    },
+    {
+      "source": "layout.jsx.tpl",
+      "destination": "app/layout.js",
+      "template": true,
+      "when": { "key": "language", "equals": "javascript" }
+    },
+    {
+      "source": "page.tsx.tpl",
+      "destination": "app/page.tsx",
+      "template": true,
+      "when": { "key": "language", "equals": "typescript" }
+    },
+    {
+      "source": "page.jsx.tpl",
+      "destination": "app/page.js",
+      "template": true,
+      "when": { "key": "language", "equals": "javascript" }
+    },
+    {
+      "source": "globals.css.tpl",
+      "destination": "app/globals.css",
+      "template": false
+    },
+    {
+      "source": "api-status.tsx.tpl",
+      "destination": "components/api-status.tsx",
+      "template": false,
+      "when": { "key": "language", "equals": "typescript" }
+    },
+    {
+      "source": "api-status.jsx.tpl",
+      "destination": "components/api-status.js",
+      "template": false,
+      "when": { "key": "language", "equals": "javascript" }
+    },
+    {
+      "source": "api.ts.tpl",
+      "destination": "services/api.ts",
+      "template": false,
+      "when": { "key": "language", "equals": "typescript" }
+    },
+    {
+      "source": "api.js.tpl",
+      "destination": "services/api.js",
+      "template": false,
+      "when": { "key": "language", "equals": "javascript" }
+    },
+    {
+      "source": "env.example.tpl",
+      "destination": ".env.example",
+      "template": true
+    },
+    {
+      "source": "public.gitkeep",
+      "destination": "public/.gitkeep",
+      "template": false
+    },
+    {
+      "source": "hooks.gitkeep",
+      "destination": "hooks/.gitkeep",
+      "template": false
+    },
+    {
+      "source": "lib.gitkeep",
+      "destination": "lib/.gitkeep",
+      "template": false
+    },
+    {
+      "source": "types.gitkeep",
+      "destination": "types/.gitkeep",
+      "template": false
+    },
+    {
+      "source": "components.gitkeep",
+      "destination": "components/.gitkeep",
+      "template": false
+    },
+    {
+      "source": "scaffold.test.mjs.tpl",
+      "destination": "tests/scaffold.test.mjs",
+      "template": false
+    }
+  ]
+}

@@ -12,7 +12,7 @@ const projectRoot = path.resolve(
 );
 const cliPath = path.join(projectRoot, "dist", "index.js");
 const temporaryRoot = await mkdtemp(
-  path.join(os.tmpdir(), "create-rohit-app-generated-integration-"),
+  path.join(os.tmpdir(), "create-rohitsingh0408-app-generated-integration-"),
 );
 
 const configurations = [

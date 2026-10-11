@@ -1,0 +1,9 @@
+node_modules/
+dist/
+coverage/
+.next/
+out/
+build/
+.env
+.env.*
+!.env.example

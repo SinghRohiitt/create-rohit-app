@@ -1,0 +1,2 @@
+# Public backend API base URL. Update it for the separately generated backend.
+NEXT_PUBLIC_API_URL=http://localhost:3000/api

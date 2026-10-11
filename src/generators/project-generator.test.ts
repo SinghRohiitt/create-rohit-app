@@ -35,7 +35,9 @@ const baseManifest = {
 };
 
 async function createTemporaryDirectory(): Promise<string> {
-  const directory = await mkdtemp(path.join(os.tmpdir(), "create-rohit-app-"));
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "create-rohitsingh0408-app-"),
+  );
   temporaryDirectories.push(directory);
   return directory;
 }

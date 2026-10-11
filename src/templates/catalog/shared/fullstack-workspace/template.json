@@ -1,0 +1,29 @@
+{
+  "id": "fullstack-workspace",
+  "description": "Root npm workspace for composing a frontend and backend application.",
+  "appliesTo": {
+    "projectType": "fullstack"
+  },
+  "order": 5,
+  "files": [
+    {
+      "source": "package.json.tpl",
+      "destination": "package.json",
+      "template": true
+    },
+    {
+      "source": "README.fullstack.tpl",
+      "destination": "README.md",
+      "template": true
+    },
+    {
+      "source": "pnpm-workspace.yaml.tpl",
+      "destination": "pnpm-workspace.yaml",
+      "template": false,
+      "when": {
+        "key": "packageManager",
+        "equals": "pnpm"
+      }
+    }
+  ]
+}

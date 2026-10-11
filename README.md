@@ -1,4 +1,4 @@
-# create-rohit-app
+# create-rohitsingh0408-app
 
 A command-line tool for scaffolding configurable full-stack applications.
 
@@ -10,8 +10,8 @@ additional runtime requirements documented in their generated README files.
 ## Usage
 
 ```sh
-npx create-rohit-app my-app
-npx create-rohit-app my-app \
+npx create-rohitsingh0408-app my-app
+npx create-rohitsingh0408-app my-app \
   --frontend react \
   --backend express \
   --typescript \
@@ -37,7 +37,7 @@ Use `--yes` (or `-y`) to accept the prompt defaults in non-interactive use.
 For example:
 
 ```sh
-npx create-rohit-app my-app \
+npx create-rohitsingh0408-app my-app \
   --frontend react \
   --backend express \
   --typescript \

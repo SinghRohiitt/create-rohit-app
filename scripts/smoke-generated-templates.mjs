@@ -16,7 +16,7 @@ const backendOnly = process.argv.includes("--backend-only");
 const nestOnly = process.argv.includes("--nestjs-only");
 const fullStackOnly = process.argv.includes("--fullstack-only");
 const temporaryRoot = await mkdtemp(
-  path.join(os.tmpdir(), "create-rohit-app-template-smoke-"),
+  path.join(os.tmpdir(), "create-rohitsingh0408-app-template-smoke-"),
 );
 
 function run(command, args, cwd) {
