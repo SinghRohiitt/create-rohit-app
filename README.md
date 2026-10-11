@@ -24,9 +24,7 @@ With only a project name, the CLI starts an interactive configuration flow.
 Choose a frontend, backend, language, database, authentication strategy, and
 whether to install dependencies. Defaults are Full Stack, React + Vite,
 Node.js + Express, TypeScript, no database, no authentication, and install
-dependencies. Frontend-only projects do not support a database. Selecting JWT
-for a React frontend adds a client-side token helper, but does not create a
-backend or implement login endpoints.
+dependencies. Frontend-only projects do not support a database.
 
 CLI options override corresponding prompt answers, and those questions are
 skipped. Framework flags imply project type: providing both frameworks selects
@@ -34,17 +32,6 @@ Full Stack; a frontend or backend flag alone selects that project type. A
 complete set of framework, language, database, and auth choices runs without
 prompts; dependency installation and Git initialization are enabled by default.
 Use `--yes` (or `-y`) to accept the prompt defaults in non-interactive use.
-For example:
-
-```sh
-npx create-rohitsingh0408-app my-app \
-  --frontend react \
-  --backend express \
-  --typescript \
-  --database postgres \
-  --auth jwt \
-  --yes
-```
 
 Framework, database, and auth options accept short aliases: `-f`, `-b`, `-d`,
 and `-a`. Use `--ts`/`--js` as language aliases. Use `--javascript`,
